@@ -152,10 +152,13 @@ fn main() {
                         info!("data count: {}", data_blocks.header.count);
                         info!("hash code: {}", data_blocks.header.hash_code);
                         info!("description: {}", data_blocks.header.description);
-                        for data_source in &data_blocks.header.data_source {
-                            info!("  data source - file: {}, sheet: {}", data_source.file, data_source.sheet);
+                        if data_blocks.header.data_source.len() > 0 {
+                            info!("data source:");
                         }
-                        info!("======================== Body: {} -> {} ========================", &bin_file, &data_blocks.data_message_type);
+                        for data_source in &data_blocks.header.data_source {
+                            info!("  - file: {}, sheet: {}", data_source.file, data_source.sheet);
+                        }
+                        info!("============ Body: {} -> {} ============", &bin_file, &data_blocks.data_message_type);
                         let mut row_index = 0;
                         if !args.plain {
                             info!("[");
