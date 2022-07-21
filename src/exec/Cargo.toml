@@ -1,0 +1,26 @@
+[package]
+name = "xresloader-dump-bin"
+version = "2.0.0"
+authors = ["owent <admin@owent.net>"]
+license = "MIT"
+description = "A tool to dump human readable text from binary output of xresloader"
+homepage = "http://xresloader.atframe.work/"
+repository = "https://github.com/xresloader/xresloader-dump-bin"
+documentation = "http://xresloader.atframe.work/"
+keywords = ["xresloader"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "xresloader-dump-bin"
+
+[dependencies]
+protobuf = { version = "3", features = ["with-bytes"] }
+protobuf-json-mapping = { version = "3" }
+bytes = { version = "1" }
+log         = "0.*"
+env_logger  = "0.*"
+json = "0.*"
+clap = { version = "3", features = ["derive"] }
+xresloader-protocol = { path = "../protocol" }

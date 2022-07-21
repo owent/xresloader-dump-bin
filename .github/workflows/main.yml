@@ -1,0 +1,298 @@
+name: "Build On Linux"
+
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - main # Push events on master branch
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+
+jobs:
+  build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        toolchain: [stable]
+        target: [x86_64-unknown-linux-gnu]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Format and lint
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy
+      - name: Cache prebuilt and cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/prebuilt
+            ~/.cargo
+            !~/prebuilt/exclude
+          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+      # - name: Generate coverage
+      #   if: ${{ matrix.os == 'ubuntu-latest' && !startsWith(github.ref, 'refs/tags/') }}
+      #   shell: bash
+      #   run: |
+      #     cargo install cargo-tarpaulin;
+      #     cargo tarpaulin -v --all-features --timeout 120 --out Xml;
+      # - name: Uploaded code coverage
+      #   if: ${{ matrix.os == 'ubuntu-latest' && !startsWith(github.ref, 'refs/tags/') }}
+      #   uses: codecov/codecov-action@v1
+      #   with:
+      #     # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
+      #     fail_ci_if_error: true
+      #     gcov_path_exclude: /.cargo,/usr/lib,~/.cargo
+  linux_build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Linux Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust: [stable]
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+          - aarch64-linux-android
+          - x86_64-linux-android
+    # see https://github.com/rust-embedded/cross
+    # Github action is run under a docker pod but cross need docker service
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Format and lint
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --all-features
+      - name: Cross Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target }} --release --all-features
+      - name: Debug build & test
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          command: test
+          args: --all-features
+        env:
+          RUSTFLAGS: "-C link-dead-code"
+      - name: Cache prebuilt and cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/prebuilt
+            ~/.cargo
+            !~/prebuilt/exclude
+          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Package
+        shell: bash
+        run: |
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/
+          cd "target/${{ matrix.target }}/release/"
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cp -f ../../../Dockerfile ./;
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x$GITHUB_REF_TYPE" ]]; then
+            TAG_NAME="$GITHUB_REF_TYPE";
+            echo "Trigger by tag -> $TAG_NAME";
+            which docker || true;
+            echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "owt5008137" --password-stdin docker.io
+            docker build --build-arg=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest -f Dockerfile .
+            docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+            docker push docker.io/owt5008137/wxwork_robotd:latest
+            docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+          else
+            echo "Trigger by $GITHUB_REF_TYPE -> $GITHUB_REF_NAME";
+          fi
+          cd ../../..;
+          mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz"
+          tags: true
+          draft: true
+          overwrite: true
+  macos_build: # job id, can be any string
+    # Job name is Build And Publish
+    name: macOS Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [macOS-latest]
+        rust: [stable]
+        target: [x86_64-apple-darwin]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --all-features
+      - name: Package
+        shell: bash
+        run: |
+          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/etc";
+          fi
+          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
+            rm -rf "target/${{ matrix.target }}/release/tools";
+          fi
+          mkdir -p "target/${{ matrix.target }}/release"
+          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
+          cd "target/${{ matrix.target }}/release/";
+          mkdir -p bin;
+          if [[ -e wxwork_robotd ]]; then
+            cp -f wxwork_robotd bin/wxwork_robotd;
+          else
+            cp -f wxwork_robotd* bin/;
+          fi
+          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          cd ../../..;
+          mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
+      - name: Run tests
+        run: |
+          cargo test --release --verbose --target ${{ matrix.target }}
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz"
+          tags: true
+          draft: true
+          overwrite: true
+  windows_build: # job id, can be any string
+    # Job name is Build And Publish
+    name: Windows Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        os: [windows-latest]
+        rust: [stable]
+        target: [x86_64-pc-windows-msvc]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          override: true
+          default: true
+          components: "rustfmt, clippy, cargo, rust-docs"
+      - name: Cargo Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --all-features
+      - name: Cross Release build
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.target == 'x86_64-pc-windows-gnu' }}
+        with:
+          use-cross: false
+          command: build
+          args: --target ${{ matrix.target }} --release --all-features
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
+          Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
+          cd "./target/${{ matrix.target }}/release/"
+          mkdir bin
+          Copy-Item -Force wxwork_robotd.exe bin/
+          if ( Test-Path "${{ matrix.target }}.zip" ) { Remove-Item -Force "${{ matrix.target }}.zip" }
+          Compress-Archive -DestinationPath "${{ matrix.target }}.zip" -Path etc,bin,tools
+          Get-ChildItem
+          Get-ChildItem -Recurse etc,bin,tools
+          Copy-Item -Force "${{ matrix.target }}.zip" ../../../
+          cd ../../../
+      - name: Run tests
+        shell: pwsh
+        run: |
+          cargo test --release --verbose --target ${{ matrix.target }}
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.zip"
+          tags: true
+          draft: true
+          overwrite: true
