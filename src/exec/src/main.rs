@@ -18,7 +18,6 @@ extern crate protobuf_json_mapping;
 
 use clap::{ArgAction, Parser};
 use std::io::Read;
-use Vec;
 
 use protobuf::{descriptor::FileDescriptorSet, Message, MessageFull};
 // use xresloader_protocol::proto::Xresloader_datablocks;
@@ -96,7 +95,7 @@ fn main() {
                                 pb_file_unit.message_type.len(),
                                 pb_file_unit.enum_type.len()
                             );
-                            desc_index.add_file(&pb_file_unit, &pb_file);
+                            desc_index.add_file(pb_file_unit, &pb_file);
                         }
                     }
                     Err(e) => {
@@ -163,7 +162,7 @@ fn main() {
                         }
                         for row_data_block in &data_blocks.data_block {
                             row_index += 1;
-                            match message_descriptor.parse_from_bytes(&row_data_block) {
+                            match message_descriptor.parse_from_bytes(row_data_block) {
                                 Ok(message) => {
                                     if args.pretty {
                                         if args.plain {

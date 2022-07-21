@@ -104,7 +104,7 @@ impl FileDescriptorIndex {
             proto: file.clone(),
             pb_file: pb_file.to_string(),
             descriptor: RefCell::new(None),
-            internal_proto: internal_proto,
+            internal_proto,
         });
 
         let nested_ident = String::from("    ");
@@ -138,7 +138,7 @@ impl FileDescriptorIndex {
         let full_name = if prefix.is_empty() {
             desc.proto.name().to_string()
         } else {
-            format!("{}.{}", prefix, desc.proto.name().to_string())
+            format!("{}.{}", prefix, desc.proto.name())
         };
 
         if self.enums.contains_key(&full_name) {
@@ -159,7 +159,7 @@ impl FileDescriptorIndex {
             debug!("{}Index enum: {}", indent, full_name);
         }
 
-        self.enums.insert(full_name, desc.clone());
+        self.enums.insert(full_name, desc);
     }
 
     fn add_message_index(
@@ -171,7 +171,7 @@ impl FileDescriptorIndex {
         let full_name = if prefix.is_empty() {
             desc.proto.name().to_string()
         } else {
-            format!("{}.{}", prefix, desc.proto.name().to_string())
+            format!("{}.{}", prefix, desc.proto.name())
         };
 
         if self.messages.contains_key(&full_name) {
@@ -287,20 +287,20 @@ impl FileDescriptorIndex {
             return Ok(x.clone());
         }
 
-        let file_descriptor =
-            match self.build_file_descriptor(&message_descriptor.file.proto.name()) {
-                Ok(x) => x,
-                Err(e) => {
-                    error!(
-                        "Build file descriptor {} for message {} failed.",
-                        message_descriptor.file.pb_file, message_full_name
-                    );
-                    return Err(e);
-                }
-            };
+        let file_descriptor = match self.build_file_descriptor(message_descriptor.file.proto.name())
+        {
+            Ok(x) => x,
+            Err(e) => {
+                error!(
+                    "Build file descriptor {} for message {} failed.",
+                    message_descriptor.file.pb_file, message_full_name
+                );
+                return Err(e);
+            }
+        };
 
-        let pb_desc = if message_full_name.starts_with(".") {
-            if let Some(x) = file_descriptor.message_by_full_name(&message_full_name) {
+        let pb_desc = if message_full_name.starts_with('.') {
+            if let Some(x) = file_descriptor.message_by_full_name(message_full_name) {
                 x
             } else {
                 return Err(());

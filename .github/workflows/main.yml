@@ -91,12 +91,6 @@ jobs:
           override: true
           default: true
           components: "rustfmt, clippy, cargo, rust-docs"
-      - name: Format and lint
-        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
-        shell: bash
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy
       - name: Cargo Release build
         uses: actions-rs/cargo@v1
         if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
