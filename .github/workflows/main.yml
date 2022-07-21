@@ -124,32 +124,26 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
-            rm -rf "target/${{ matrix.target }}/release/etc";
-          fi
-          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
-            rm -rf "target/${{ matrix.target }}/release/tools";
-          fi
           mkdir -p "target/${{ matrix.target }}/release"
-          cp -rf etc tools "target/${{ matrix.target }}/release"/
+          cp -rf "target/${{ matrix.target }}/release"/
           cd "target/${{ matrix.target }}/release/"
           mkdir -p bin;
-          if [[ -e wxwork_robotd ]]; then
-            cp -f wxwork_robotd bin/wxwork_robotd;
+          if [[ -e xresloader-dump-bin ]]; then
+            cp -f xresloader-dump-bin bin/xresloader-dump-bin;
           else
-            cp -f wxwork_robotd* bin/;
+            cp -f xresloader-dump-bin* bin/;
           fi
-          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          tar -zcvf ${{ matrix.target }}.tar.gz bin ;
           cp -f ../../../Dockerfile ./;
           if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]] && [[ "xtag" == "x$GITHUB_REF_TYPE" ]]; then
             TAG_NAME="$GITHUB_REF_TYPE";
             echo "Trigger by tag -> $TAG_NAME";
             which docker || true;
             echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "owt5008137" --password-stdin docker.io
-            docker build --build-arg=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} --force-rm --tag docker.io/owt5008137/wxwork_robotd:latest -f Dockerfile .
-            docker tag docker.io/owt5008137/wxwork_robotd:latest docker.io/owt5008137/wxwork_robotd:$TAG_NAME
-            docker push docker.io/owt5008137/wxwork_robotd:latest
-            docker push docker.io/owt5008137/wxwork_robotd:$TAG_NAME
+            docker build --build-arg=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} --force-rm --tag docker.io/owt5008137/xresloader-dump-bin:latest -f Dockerfile .
+            docker tag docker.io/owt5008137/xresloader-dump-bin:latest docker.io/owt5008137/xresloader-dump-bin:$TAG_NAME
+            docker push docker.io/owt5008137/xresloader-dump-bin:latest
+            docker push docker.io/owt5008137/xresloader-dump-bin:$TAG_NAME
           else
             echo "Trigger by $GITHUB_REF_TYPE -> $GITHUB_REF_NAME";
           fi
@@ -196,22 +190,16 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          if [[ -e "target/${{ matrix.target }}/release/etc" ]]; then
-            rm -rf "target/${{ matrix.target }}/release/etc";
-          fi
-          if [[ -e "target/${{ matrix.target }}/release/tools" ]]; then
-            rm -rf "target/${{ matrix.target }}/release/tools";
-          fi
           mkdir -p "target/${{ matrix.target }}/release"
-          cp -rf etc tools "target/${{ matrix.target }}/release"/ ;
+          cp -rf "target/${{ matrix.target }}/release"/ ;
           cd "target/${{ matrix.target }}/release/";
           mkdir -p bin;
-          if [[ -e wxwork_robotd ]]; then
-            cp -f wxwork_robotd bin/wxwork_robotd;
+          if [[ -e xresloader-dump-bin ]]; then
+            cp -f xresloader-dump-bin bin/xresloader-dump-bin;
           else
-            cp -f wxwork_robotd* bin/;
+            cp -f xresloader-dump-bin* bin/;
           fi
-          tar -zcvf ${{ matrix.target }}.tar.gz etc bin tools;
+          tar -zcvf ${{ matrix.target }}.tar.gz bin ;
           cd ../../..;
           mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
       - name: Run tests
@@ -266,15 +254,13 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          Copy-Item -Force -Recurse etc "./target/${{ matrix.target }}/release/"
-          Copy-Item -Force -Recurse tools "./target/${{ matrix.target }}/release/"
           cd "./target/${{ matrix.target }}/release/"
           mkdir bin
-          Copy-Item -Force wxwork_robotd.exe bin/
+          Copy-Item -Force xresloader-dump-bin.exe bin/
           if ( Test-Path "${{ matrix.target }}.zip" ) { Remove-Item -Force "${{ matrix.target }}.zip" }
-          Compress-Archive -DestinationPath "${{ matrix.target }}.zip" -Path etc,bin,tools
+          Compress-Archive -DestinationPath "${{ matrix.target }}.zip" -Path bin
           Get-ChildItem
-          Get-ChildItem -Recurse etc,bin,tools
+          Get-ChildItem -Recurse bin
           Copy-Item -Force "${{ matrix.target }}.zip" ../../../
           cd ../../../
       - name: Run tests
