@@ -125,7 +125,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p "target/${{ matrix.target }}/release"
-          cp -rf "target/${{ matrix.target }}/release"/
           cd "target/${{ matrix.target }}/release/"
           mkdir -p bin;
           if [[ -e xresloader-dump-bin ]]; then
@@ -178,7 +177,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p "target/${{ matrix.target }}/release"
-          cp -rf "target/${{ matrix.target }}/release"/ ;
           cd "target/${{ matrix.target }}/release/";
           mkdir -p bin;
           if [[ -e xresloader-dump-bin ]]; then
