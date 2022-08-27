@@ -1,5 +1,14 @@
 # xresloader-dump-bin
 
+[![Build](https://github.com/xresloader/xresloader-dump-bin/actions/workflows/main.yml/badge.svg)](https://github.com/xresloader/xresloader-dump-bin/actions/workflows/main.yml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/xresloader/xresloader-dump-bin)](https://github.com/xresloader/xresloader-dump-bin/releases)
+
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/xresloader/xresloader-dump-bin)
+![GitHub repo size](https://img.shields.io/github/repo-size/xresloader/xresloader-dump-bin)
+![GitHub All Releases](https://img.shields.io/github/downloads/xresloader/xresloader-dump-bin/total)
+![GitHub forks](https://img.shields.io/github/forks/xresloader/xresloader-dump-bin?style=social)
+![GitHub stars](https://img.shields.io/github/stars/xresloader/xresloader-dump-bin?style=social)
+
 A tool to dump human readable text from binary output of [xresloader][1] .
 
 ## Usage

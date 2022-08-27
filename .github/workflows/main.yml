@@ -1,4 +1,4 @@
-name: "Build On Linux"
+name: "Build"
 
 on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
   push:
