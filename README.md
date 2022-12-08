@@ -16,61 +16,36 @@ A tool to dump human readable text from binary output of [xresloader][1] .
 ```bash
 ./xresloader-dump-bin --help
 
-./xresloader-dump-bin -p kind.pb -b arr_in_arr_cfg.bin
+./xresloader-dump-bin -p ./sample-conf/kind.pb -b ./sample-data/role_upgrade_cfg.bin --pretty
 
 xresloader-dump-bin.exe --help
 ```
 
 You can use environment `RUST_LOG=<level>` to control log level and `RUST_LOG_STYLE=style` to set log style.
 
-## cargo configure example
+Example output: `./xresloader-dump-bin -p ./sample-conf/kind.pb -b ./sample-data/role_upgrade_cfg.bin` (Without `--pretty`)
 
-File path ```~/.cargo/config.toml``` or ```~/.cargo/config```
-
-```toml
-
-[cargo-new]
-name = "Your Name"        # name to use in `authors` field
-email = "you@example.com" # email address to use in `authors` field
-vcs = "none"              # VCS to use ('git', 'hg', 'pijul', 'fossil', 'none')
-
-[http]
-debug = false               # HTTP debugging
-proxy = "host:port"         # HTTP proxy in libcurl format
-ssl-version = "tlsv1.3"     # TLS version to use
-ssl-version.max = "tlsv1.3" # maximum TLS version
-ssl-version.min = "tlsv1.1" # minimum TLS version
-timeout = 30                # timeout for each HTTP request, in seconds
-low-speed-limit = 10        # network timeout threshold (bytes/sec)
-cainfo = "cert.pem"         # path to Certificate Authority (CA) bundle
-check-revoke = true         # check for SSL certificate revocation
-multiplexing = true         # HTTP/2 multiplexing
-user-agent = "…"            # the user-agent header
-
-[net]
-retry = 2                   # network retries
-git-fetch-with-cli = true   # use the `git` executable for git operations
-offline = false             # do not access the network
-
-[registries.<name>]  # registries other than crates.io
-index = "…"          # URL of the registry index
-token = "…"          # authentication token for the registry
-
-[registry]
-default = "…"        # name of the default registry
-token = "…"          # authentication token for crates.io
-
-[source.<name>]      # source definition and replacement
-replace-with = "…"   # replace this source with the given named source
-directory = "…"      # path to a directory source
-registry = "…"       # URL to a registry source
-local-registry = "…" # path to a local registry source
-git = "…"            # URL of a git repository source
-branch = "…"         # branch name for the git repository
-tag = "…"            # tag name for the git repository
-rev = "…"            # revision for the git repository
-
-
+```
+======================== Header: .\sample-data\role_upgrade_cfg.bin ========================
+xresloader version: 2.8.0
+data version: 2.8.0.20200609192757
+data count: 11
+hash code: sha256:718d22f78006e5d34d6b68eb56e204a00f4174737b6864e247b661d8963c7df3
+description:
+============ Body: .\sample-data\role_upgrade_cfg.bin -> role_upgrade_cfg ============
+[
+    {"Id": 10001, "Level": 1},
+    {"Id": 10001, "Level": 2, "CostType": 10001, "CostValue": 50},
+    {"Id": 10001, "Level": 3, "CostType": 10001, "CostValue": 100},
+    {"Id": 10001, "Level": 4, "CostType": 10001, "CostValue": 150},
+    {"Id": 10001, "Level": 5, "CostType": 10001, "CostValue": 200},
+    {"Id": 10001, "Level": 6, "CostType": 10001, "CostValue": 250},
+    {"Id": 10001, "Level": 7, "CostType": 10001, "CostValue": 300},
+    {"Id": 10001, "Level": 8, "CostType": 10001, "CostValue": 350},
+    {"Id": 10001, "Level": 9, "CostType": 10101, "CostValue": 400},
+    {"Id": 10001, "Level": 10, "CostType": 10101, "CostValue": 450},
+    {"Id": 10001, "Level": 11, "CostType": 10101, "CostValue": 500},
+]
 ```
 
 https://doc.rust-lang.org/cargo/reference/config.html
