@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-dump-bin"
-version = "2.0.0"
+version = "2.1.0"
 authors = ["owent <admin@owent.net>"]
 license = "MIT"
 description = "A tool to dump human readable text from binary output of xresloader"
@@ -22,5 +22,5 @@ bytes = { version = "1" }
 log         = "0.*"
 env_logger  = "0.*"
 json = "0.*"
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
 xresloader-protocol = { path = "../protocol" }

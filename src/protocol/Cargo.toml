@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-protocol"
-version = "2.0.0"
+version = "2.1.0"
 authors = ["owent <admin@owent.net>"]
 license = "MIT"
 description = "A tool to dump human readable text from binary output of xresloader"

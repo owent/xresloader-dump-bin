@@ -25,7 +25,7 @@ You can use environment `RUST_LOG=<level>` to control log level and `RUST_LOG_ST
 
 Example output: `./xresloader-dump-bin -p ./sample-conf/kind.pb -b ./sample-data/role_upgrade_cfg.bin` (Without `--pretty`)
 
-```
+```bash
 ======================== Header: .\sample-data\role_upgrade_cfg.bin ========================
 xresloader version: 2.8.0
 data version: 2.8.0.20200609192757

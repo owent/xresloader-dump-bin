@@ -40,11 +40,14 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy
       - name: Cache prebuilt and cargo
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             ~/prebuilt
-            ~/.cargo
             !~/prebuilt/exclude
           key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
       # - name: Generate coverage
@@ -114,11 +117,14 @@ jobs:
         env:
           RUSTFLAGS: "-C link-dead-code"
       - name: Cache prebuilt and cargo
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             ~/prebuilt
-            ~/.cargo
             !~/prebuilt/exclude
           key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
       - name: Package
