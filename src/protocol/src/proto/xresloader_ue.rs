@@ -92,6 +92,10 @@ pub mod exts {
 
     pub const ue_type_is_class: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1103, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
 
+    pub const ue_origin_type_name: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1104, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
+    pub const ue_origin_type_default_value: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1105, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
     pub const helper: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::MessageOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1101, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const not_data_table: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::MessageOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1102, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
@@ -109,13 +113,16 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     oogle.protobuf.FieldOptionsR\x06keyTag:@\n\x0cue_type_name\x18\xce\x08\
     \x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\nueTypeName:G\n\x10ue_\
     type_is_class\x18\xcf\x08\x20\x01(\x08\x12\x1d.google.protobuf.FieldOpti\
-    onsR\rueTypeIsClass:8\n\x06helper\x18\xcd\x08\x20\x01(\t\x12\x1f.google.\
-    protobuf.MessageOptionsR\x06helper:F\n\x0enot_data_table\x18\xce\x08\x20\
-    \x01(\x08\x12\x1f.google.protobuf.MessageOptionsR\x0cnotDataTable:g\n\
-    \x0edefault_loader\x18\xcf\x08\x20\x01(\x0e2\x1e.org.xresloader.ue.loade\
-    r_mode\x12\x1f.google.protobuf.MessageOptionsR\rdefaultLoader:G\n\x0einc\
-    lude_header\x18\xd0\x08\x20\x03(\t\x12\x1f.google.protobuf.MessageOption\
-    sR\rincludeHeaderb\x06proto3\
+    onsR\rueTypeIsClass:M\n\x13ue_origin_type_name\x18\xd0\x08\x20\x01(\t\
+    \x12\x1d.google.protobuf.FieldOptionsR\x10ueOriginTypeName:^\n\x1cue_ori\
+    gin_type_default_value\x18\xd1\x08\x20\x01(\t\x12\x1d.google.protobuf.Fi\
+    eldOptionsR\x18ueOriginTypeDefaultValue:8\n\x06helper\x18\xcd\x08\x20\
+    \x01(\t\x12\x1f.google.protobuf.MessageOptionsR\x06helper:F\n\x0enot_dat\
+    a_table\x18\xce\x08\x20\x01(\x08\x12\x1f.google.protobuf.MessageOptionsR\
+    \x0cnotDataTable:g\n\x0edefault_loader\x18\xcf\x08\x20\x01(\x0e2\x1e.org\
+    .xresloader.ue.loader_mode\x12\x1f.google.protobuf.MessageOptionsR\rdefa\
+    ultLoader:G\n\x0einclude_header\x18\xd0\x08\x20\x03(\t\x12\x1f.google.pr\
+    otobuf.MessageOptionsR\rincludeHeaderb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-protocol"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["owent <admin@owent.net>"]
 license = "MIT"
 description = "A tool to dump human readable text from binary output of xresloader"
@@ -14,7 +14,7 @@ edition = "2021"
 
 [lib]
 #proc-macro = true
-bench = false # It's nightly now
+bench = false  # It's nightly now
 harness = true
 
 [dependencies]
@@ -23,7 +23,7 @@ bytes = { version = "1" }
 
 
 [build-dependencies]
-log         = "0.*"
-env_logger  = "0.*"
+log = "0.*"
+env_logger = "0.*"
 protobuf-codegen = { version = "3" }
 protoc-bin-vendored = { version = "3" }

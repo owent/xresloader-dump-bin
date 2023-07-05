@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-dump-bin"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["owent <admin@owent.net>"]
 license = "MIT"
 description = "A tool to dump human readable text from binary output of xresloader"
@@ -19,8 +19,8 @@ name = "xresloader-dump-bin"
 protobuf = { version = "3", features = ["with-bytes"] }
 protobuf-json-mapping = { version = "3" }
 bytes = { version = "1" }
-log         = "0.*"
-env_logger  = "0.*"
+log = "0.*"
+env_logger = "0.*"
 json = "0.*"
 clap = { version = "4", features = ["derive"] }
 xresloader-protocol = { path = "../protocol" }
