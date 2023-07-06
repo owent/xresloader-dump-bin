@@ -102,12 +102,16 @@ jobs:
           command: build
           args: --target ${{ matrix.target }} --release --all-features
       - name: Cross Release build
-        uses: actions-rs/cargo@v1
         if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
-        with:
-          use-cross: true
-          command: build
-          args: --target ${{ matrix.target }} --release --all-features
+        shell: bash
+        run: |
+          NEED_RETRY=0
+          cargo install cross xargo
+          cross build --target ${{ matrix.target }} --release --all-features || NEED_RETRY=1
+          if [[ $NEED_RETRY -ne 0 ]]; then
+            cargo install cross --git https://github.com/cross-rs/cross
+          fi
+          cross build --target ${{ matrix.target }} --release --all-features
       - name: Debug build & test
         uses: actions-rs/cargo@v1
         if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
