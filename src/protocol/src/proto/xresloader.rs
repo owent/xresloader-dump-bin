@@ -36,11 +36,13 @@ pub mod exts {
 
     pub const msg_separator: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::MessageOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1012, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
-    pub const verifier: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1001, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+    pub const validator: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1001, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const field_unique_tag: ::protobuf::ext::ExtFieldRepeated<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldRepeated::new(1002, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const field_not_null: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1003, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
+
+    pub const verifier: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1009, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const field_description: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1011, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
@@ -75,28 +77,29 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ption:W\n\x17msg_require_mapping_all\x18\xf3\x07\x20\x01(\x08\x12\x1f.go\
     ogle.protobuf.MessageOptionsR\x14msgRequireMappingAll:E\n\rmsg_separator\
     \x18\xf4\x07\x20\x01(\t\x12\x1f.google.protobuf.MessageOptionsR\x0cmsgSe\
-    parator::\n\x08verifier\x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.F\
-    ieldOptionsR\x08verifier:H\n\x10field_unique_tag\x18\xea\x07\x20\x03(\t\
+    parator:<\n\tvalidator\x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.Fi\
+    eldOptionsR\tvalidator:H\n\x10field_unique_tag\x18\xea\x07\x20\x03(\t\
     \x12\x1d.google.protobuf.FieldOptionsR\x0efieldUniqueTag:D\n\x0efield_no\
     t_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\
-    \x0cfieldNotNull:K\n\x11field_description\x18\xf3\x07\x20\x01(\t\x12\x1d\
-    .google.protobuf.FieldOptionsR\x10fieldDescription:?\n\x0bfield_alias\
-    \x18\xf4\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOptionsR\nfieldAlia\
-    s:?\n\x0bfield_ratio\x18\xf5\x07\x20\x01(\x05\x12\x1d.google.protobuf.Fi\
-    eldOptionsR\nfieldRatio:G\n\x0ffield_separator\x18\xf6\x07\x20\x01(\t\
-    \x12\x1d.google.protobuf.FieldOptionsR\x0efieldSeparator:E\n\x0efield_re\
-    quired\x18\xf7\x07\x20\x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\rf\
-    ieldRequired:L\n\x12field_origin_value\x18\xf8\x07\x20\x01(\t\x12\x1d.go\
-    ogle.protobuf.FieldOptionsR\x10fieldOriginValue:K\n\x11oneof_description\
-    \x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.OneofOptionsR\x10oneofDe\
-    scription:G\n\x0foneof_separator\x18\xea\x07\x20\x01(\t\x12\x1d.google.p\
-    rotobuf.OneofOptionsR\x0eoneofSeparator:D\n\x0eoneof_not_null\x18\xeb\
-    \x07\x20\x01(\x08\x12\x1d.google.protobuf.OneofOptionsR\x0coneofNotNull:\
-    H\n\x10enum_description\x18\xe9\x07\x20\x01(\t\x12\x1c.google.protobuf.E\
-    numOptionsR\x0fenumDescription:O\n\x11enumv_description\x18\xe9\x07\x20\
-    \x01(\t\x12!.google.protobuf.EnumValueOptionsR\x10enumvDescription:A\n\n\
-    enum_alias\x18\xea\x07\x20\x03(\t\x12!.google.protobuf.EnumValueOptionsR\
-    \tenumAliasb\x06proto3\
+    \x0cfieldNotNull::\n\x08verifier\x18\xf1\x07\x20\x01(\t\x12\x1d.google.p\
+    rotobuf.FieldOptionsR\x08verifier:K\n\x11field_description\x18\xf3\x07\
+    \x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldDescription:?\
+    \n\x0bfield_alias\x18\xf4\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOp\
+    tionsR\nfieldAlias:?\n\x0bfield_ratio\x18\xf5\x07\x20\x01(\x05\x12\x1d.g\
+    oogle.protobuf.FieldOptionsR\nfieldRatio:G\n\x0ffield_separator\x18\xf6\
+    \x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x0efieldSeparator:\
+    E\n\x0efield_required\x18\xf7\x07\x20\x01(\x08\x12\x1d.google.protobuf.F\
+    ieldOptionsR\rfieldRequired:L\n\x12field_origin_value\x18\xf8\x07\x20\
+    \x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldOriginValue:K\n\
+    \x11oneof_description\x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.One\
+    ofOptionsR\x10oneofDescription:G\n\x0foneof_separator\x18\xea\x07\x20\
+    \x01(\t\x12\x1d.google.protobuf.OneofOptionsR\x0eoneofSeparator:D\n\x0eo\
+    neof_not_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.protobuf.OneofOpti\
+    onsR\x0coneofNotNull:H\n\x10enum_description\x18\xe9\x07\x20\x01(\t\x12\
+    \x1c.google.protobuf.EnumOptionsR\x0fenumDescription:O\n\x11enumv_descri\
+    ption\x18\xe9\x07\x20\x01(\t\x12!.google.protobuf.EnumValueOptionsR\x10e\
+    numvDescription:A\n\nenum_alias\x18\xea\x07\x20\x03(\t\x12!.google.proto\
+    buf.EnumValueOptionsR\tenumAliasb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
