@@ -11,7 +11,7 @@ fn codegen() -> protobuf_codegen::Codegen {
     codegen
         .protoc_path(&protoc_bin_vendored::protoc_bin_path().unwrap())
         .out_dir("src/proto")
-        .inputs(&[
+        .inputs([
             "../../third_party/xresloader-protocol/core/pb_header_v3.proto",
             "../../third_party/xresloader-protocol/core/extensions/v3/xresloader.proto",
             "../../third_party/xresloader-protocol/core/extensions/v3/xresloader_ue.proto",
