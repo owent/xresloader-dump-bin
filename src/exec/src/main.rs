@@ -1,6 +1,8 @@
 // When the `system-alloc` feature is used, use the System Allocator
 #[cfg(feature = "system-alloc")]
 use std::alloc::System;
+use std::collections::{HashSet, LinkedList};
+use std::ops::Deref;
 #[cfg(feature = "system-alloc")]
 #[global_allocator]
 static GLOBAL: System = System;
@@ -15,11 +17,14 @@ extern crate bytes;
 extern crate env_logger;
 extern crate json;
 extern crate protobuf_json_mapping;
+extern crate regex;
 
 use clap::{ArgAction, Parser};
-use std::io::Read;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Read, Write};
 
-use protobuf::{descriptor::FileDescriptorSet, Message, MessageFull};
+use protobuf::{descriptor::FileDescriptorSet, Message, MessageDyn, MessageFull};
 // use xresloader_protocol::proto::Xresloader_datablocks;
 
 mod file_descriptor_index;
@@ -49,11 +54,309 @@ struct DumpOptions {
     /// Plain mode
     #[clap(long, value_parser, default_value = "false")]
     plain: bool,
+
+    /// Output string table as json
+    #[clap(long, value_parser, default_value = "")]
+    output_string_table_json: String,
+
+    /// Output string table as text lines
+    #[clap(long, value_parser, default_value = "")]
+    output_string_table_text: String,
+
+    /// Field value matching for string table
+    #[clap(long, value_parser, action = ArgAction::Append)]
+    string_table_value_regex_rule: Vec<String>,
+
+    /// Load field value matching rule from file for string table
+    #[clap(long, value_parser, action = ArgAction::Append)]
+    string_table_value_regex_file: Vec<String>,
+
+    /// Load field path from file for string table
+    #[clap(long, value_parser, action = ArgAction::Append)]
+    string_table_field_path_file: Vec<String>,
+
+    /// String table pretty mode
+    #[clap(long, value_parser, default_value = "false")]
+    string_table_pretty: bool,
 }
 
 struct Logger {
     stdout: Box<env_logger::Logger>,
     stderr: Box<env_logger::Logger>,
+}
+
+#[derive(Clone)]
+struct StringTableDataSource {
+    pub file: ::std::string::String,
+    pub sheet: ::std::string::String,
+    pub count: i32,
+}
+
+struct StringTableBinarySource {
+    pub xres_ver: ::std::string::String,
+    pub data_ver: ::std::string::String,
+    pub bin_file: ::std::string::String,
+    pub count: u32,
+    pub hash_code: ::std::string::String,
+    pub description: ::std::string::String,
+    pub data_source: ::std::vec::Vec<StringTableDataSource>,
+}
+
+struct StringTableItemSource {
+    pub file: ::std::string::String,
+    pub sheet: ::std::string::String,
+}
+
+struct StringTableContent {
+    pub head: StringTableBinarySource,
+    pub body: HashMap<String, LinkedList<StringTableItemSource>>,
+}
+
+impl StringTableContent {
+    pub fn load_message(
+        &mut self,
+        message: &dyn MessageDyn,
+        value_rules: &Vec<regex::Regex>,
+        field_paths: &HashSet<String>,
+        data_source: &StringTableDataSource,
+    ) {
+        message
+            .descriptor_dyn()
+            .fields()
+            .for_each(|field| match field.runtime_field_type() {
+                protobuf::reflect::RuntimeFieldType::Singular(_) => {
+                    if let Some(v) = field.get_singular(message) {
+                        match v {
+                            protobuf::reflect::ReflectValueRef::Message(m) => {
+                                self.load_message(m.deref(), value_rules, field_paths, data_source);
+                            }
+                            protobuf::reflect::ReflectValueRef::String(_s) => {
+                                if !field_paths.is_empty()
+                                    && !field_paths.contains(&field.full_name())
+                                {
+                                    return;
+                                }
+
+                                if !value_rules.is_empty() {
+                                    let mut matched = false;
+                                    for rule in value_rules {
+                                        if rule.is_match(v.to_string().as_str()) {
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    if !matched {
+                                        return;
+                                    }
+                                }
+                                let value = v.to_string();
+                                if let Some(item) = self.body.get_mut(&value) {
+                                    item.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                } else {
+                                    let mut ls = LinkedList::new();
+                                    ls.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                    self.body.insert(value, ls);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                protobuf::reflect::RuntimeFieldType::Repeated(t) => {
+                    if !field_paths.is_empty()
+                        && t == protobuf::reflect::RuntimeType::String
+                        && !field_paths.contains(&field.full_name())
+                    {
+                        return;
+                    }
+
+                    field
+                        .get_repeated(message)
+                        .into_iter()
+                        .for_each(|v| match v {
+                            protobuf::reflect::ReflectValueRef::Message(m) => {
+                                self.load_message(m.deref(), value_rules, field_paths, data_source);
+                            }
+                            protobuf::reflect::ReflectValueRef::String(_s) => {
+                                if !value_rules.is_empty() {
+                                    let mut matched = false;
+                                    for rule in value_rules {
+                                        if rule.is_match(v.to_string().as_str()) {
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    if !matched {
+                                        return;
+                                    }
+                                }
+
+                                let value = v.to_string();
+                                if let Some(item) = self.body.get_mut(&value) {
+                                    item.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                } else {
+                                    let mut ls = LinkedList::new();
+                                    ls.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                    self.body.insert(value, ls);
+                                }
+                            }
+                            _ => {}
+                        })
+                }
+                protobuf::reflect::RuntimeFieldType::Map(_, _) => {
+                    field.get_map(message).into_iter().for_each(|(k, v)| {
+                        match k {
+                            protobuf::reflect::ReflectValueRef::Message(m) => {
+                                self.load_message(m.deref(), value_rules, field_paths, data_source);
+                            }
+                            protobuf::reflect::ReflectValueRef::String(_s) => {
+                                if !field_paths.is_empty()
+                                    && !field_paths.contains(&field.full_name())
+                                {
+                                    return;
+                                }
+
+                                if !value_rules.is_empty() {
+                                    let mut matched = false;
+                                    for rule in value_rules {
+                                        if rule.is_match(v.to_string().as_str()) {
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    if !matched {
+                                        return;
+                                    }
+                                }
+
+                                let value = v.to_string();
+                                if let Some(item) = self.body.get_mut(&value) {
+                                    item.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                } else {
+                                    let mut ls = LinkedList::new();
+                                    ls.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                    self.body.insert(value, ls);
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        match v {
+                            protobuf::reflect::ReflectValueRef::Message(m) => {
+                                self.load_message(m.deref(), value_rules, field_paths, data_source);
+                            }
+                            protobuf::reflect::ReflectValueRef::String(_s) => {
+                                if !field_paths.is_empty()
+                                    && !field_paths.contains(&field.full_name())
+                                {
+                                    return;
+                                }
+
+                                if !value_rules.is_empty() {
+                                    let mut matched = false;
+                                    for rule in value_rules {
+                                        if rule.is_match(v.to_string().as_str()) {
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    if !matched {
+                                        return;
+                                    }
+                                }
+
+                                let value = v.to_string();
+                                if let Some(item) = self.body.get_mut(&value) {
+                                    item.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                } else {
+                                    let mut ls = LinkedList::new();
+                                    ls.push_back(StringTableItemSource {
+                                        file: data_source.file.clone(),
+                                        sheet: data_source.sheet.clone(),
+                                    });
+                                    self.body.insert(value, ls);
+                                }
+                            }
+                            _ => {}
+                        }
+                    });
+                }
+            });
+    }
+
+    pub fn to_json(&self) -> json::JsonValue {
+        let mut json_item = json::JsonValue::new_object();
+        let mut json_item_head = json::JsonValue::new_object();
+        let mut json_item_body = json::JsonValue::new_object();
+
+        let _ = json_item_head.insert("xres_ver", self.head.xres_ver.clone());
+        let _ = json_item_head.insert("data_ver", self.head.data_ver.clone());
+        let _ = json_item_head.insert("bin_file", self.head.bin_file.clone());
+        let _ = json_item_head.insert("count", self.head.count);
+        let _ = json_item_head.insert("hash_code", self.head.hash_code.clone());
+        let _ = json_item_head.insert("description", self.head.description.clone());
+        let _ = json_item_head.insert("data_source", {
+            let mut ds = json::JsonValue::new_array();
+            for source in &self.head.data_source {
+                let mut d = json::JsonValue::new_object();
+                let _ = d.insert("file", source.file.clone());
+                let _ = d.insert("sheet", source.sheet.clone());
+                if source.count > 0 {
+                    let _ = d.insert("count", source.count);
+                }
+                let _ = ds.push(d);
+            }
+
+            ds
+        });
+
+        for row in &self.body {
+            let mut body_item = json::JsonValue::new_object();
+            let mut body_item_source = json::JsonValue::new_array();
+            for source in row.1 {
+                let mut d = json::JsonValue::new_object();
+                let _ = d.insert("file", source.file.clone());
+                let _ = d.insert("sheet", source.sheet.clone());
+                let _ = body_item_source.push(d);
+            }
+            let _ = body_item.insert("source", body_item_source);
+            let _ = json_item_body.insert(row.0, body_item);
+        }
+
+        let _ = json_item.insert("head", json_item_head);
+        let _ = json_item.insert("body", json_item_body);
+        json_item
+    }
+
+    pub fn to_text(&self) -> HashSet<String> {
+        let mut ret = HashSet::new();
+        for row in &self.body {
+            let _ = ret.insert(row.0.clone());
+        }
+
+        ret
+    }
 }
 
 impl Logger {
@@ -165,6 +468,87 @@ fn main() {
 
     let mut has_error = false;
 
+    let mut string_tables: Vec<StringTableContent> = vec![];
+    let mut string_table_value_regex_rules: Vec<regex::Regex> = vec![];
+    let mut string_table_field_paths: HashSet<String> = HashSet::new();
+    for regex_rule in &args.string_table_value_regex_rule {
+        match regex::Regex::new(regex_rule) {
+            Ok(r) => {
+                string_table_value_regex_rules.push(r);
+            }
+            Err(e) => {
+                error!(
+                    "Invalid regex rule: {}, {}, ignore this rule",
+                    regex_rule, e
+                );
+                has_error = true;
+            }
+        }
+    }
+    for field_path_file in &args.string_table_value_regex_file {
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(false)
+            .open(field_path_file)
+        {
+            Ok(f) => {
+                let reader = BufReader::new(f);
+                for line in reader
+                    .lines()
+                    .map_while(Result::ok)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                {
+                    match regex::Regex::new(&line) {
+                        Ok(r) => {
+                            string_table_value_regex_rules.push(r);
+                        }
+                        Err(e) => {
+                            error!(
+                                "Invalid regex rule: {} in file {}, {}, ignore this rule",
+                                line, field_path_file, e
+                            );
+                            has_error = true;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Try to open regex rule file {} failed, {}, ignore this file",
+                    field_path_file, e
+                );
+                has_error = true;
+            }
+        }
+    }
+    for field_path_file in &args.string_table_field_path_file {
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(false)
+            .open(field_path_file)
+        {
+            Ok(f) => {
+                let reader = BufReader::new(f);
+                for line in reader
+                    .lines()
+                    .map_while(Result::ok)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                {
+                    string_table_field_paths.insert(line);
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Try to open file {} failed, {}, ignore this file",
+                    field_path_file, e
+                );
+                has_error = true;
+            }
+        }
+    }
+
     for bin_file in args.bin_file {
         debug!("Load xresloader output binary file: {}", bin_file);
         match std::fs::OpenOptions::new()
@@ -207,17 +591,78 @@ fn main() {
                             info!("data source:");
                         }
                         for data_source in &data_blocks.header.data_source {
-                            info!("  - file: {}, sheet: {}", data_source.file, data_source.sheet);
+                            if data_source.count > 0 {
+                                info!("  - file: {}, sheet: {}, count: {}", data_source.file, data_source.sheet, data_source.count);
+                            } else {
+                                info!("  - file: {}, sheet: {}", data_source.file, data_source.sheet);
+                            }
+                        }
+
+                        let mut current_string_table_head : Option<StringTableBinarySource> = None;
+
+                        if !args.output_string_table_json.is_empty() || !args.output_string_table_text.is_empty() {
+                            current_string_table_head = Some(StringTableBinarySource {
+                                xres_ver: data_blocks.header.xres_ver.clone(),
+                                data_ver: data_blocks.header.data_ver.clone(),
+                                bin_file: bin_file.clone(),
+                                count: data_blocks.header.count,
+                                hash_code: data_blocks.header.hash_code.clone(),
+                                description: data_blocks.header.description.clone(),
+                                data_source: {
+                                    let mut data_source = Vec::new();
+                                    for source in &data_blocks.header.data_source {
+                                        data_source.push(StringTableDataSource {
+                                            file: source.file.clone(),
+                                            sheet: source.sheet.clone(),
+                                            count: source.count,
+                                        });
+                                    }
+                                    data_source
+                                },
+                            });
                         }
                         info!("============ Body: {} -> {} ============", &bin_file, &data_blocks.data_message_type);
                         let mut row_index = 0;
                         if !args.plain {
                             info!("[");
                         }
+                        let mut current_string_table :Option<StringTableContent> = None;
+                        if let Some(head) = current_string_table_head {
+                            current_string_table = Some(StringTableContent {
+                                head,
+                                body: HashMap::new(),
+                            });
+                        }
+
+                        let mut fallback_data_source =
+                            StringTableDataSource {
+                                file: String::from("[UNKNOWN]"),
+                                sheet: String::from("[UNKNOWN]"),
+                                count: 0,
+                        };
+                        let mut current_data_source_idx = 0;
+                        let mut current_data_source_left_row = 0;
                         for row_data_block in &data_blocks.data_block {
                             row_index += 1;
+                            if current_data_source_left_row <= 0 && current_data_source_idx < data_blocks.header.data_source.len() {
+                                current_data_source_left_row = data_blocks.header.data_source[current_data_source_idx].count;
+                                fallback_data_source = StringTableDataSource {
+                                    file: data_blocks.header.data_source[current_data_source_idx].file.clone(),
+                                    sheet: data_blocks.header.data_source[current_data_source_idx].sheet.clone(),
+                                    count: data_blocks.header.data_source[current_data_source_idx].count,
+                                };
+                                current_data_source_idx += 1;
+                            }
+                            if current_data_source_left_row > 0 {
+                                current_data_source_left_row -= 1;
+                            }
+
                             match message_descriptor.parse_from_bytes(row_data_block) {
                                 Ok(message) => {
+                                    if let Some(ref mut string_table) = current_string_table {
+                                        string_table.load_message(message.as_ref(), &string_table_value_regex_rules, &string_table_field_paths, &fallback_data_source);
+                                    }
+
                                     if args.pretty {
                                         if args.plain {
                                             info!("  ------------ Row {} ------------\n{}", row_index, protobuf::text_format::print_to_string_pretty(message.as_ref()));
@@ -249,6 +694,12 @@ fn main() {
                         if !args.plain {
                             info!("]");
                         }
+
+                        if let Some(string_table) = current_string_table {
+                            if !string_table.body.is_empty() {
+                                string_tables.push(string_table);
+                            }
+                        }
                     }
                     Err(e) => {
                         error!("Parse {} from file {} failed, {}, ignore this file", xresloader_protocol::proto::pb_header_v3::Xresloader_datablocks::descriptor().full_name(), bin_file, e);
@@ -266,6 +717,65 @@ fn main() {
         }
 
         // 2.6.0
+    }
+
+    // Dump string table json
+    if !args.output_string_table_json.is_empty() {
+        match File::create(&args.output_string_table_json) {
+            Ok(mut f) => {
+                let mut json = json::JsonValue::new_array();
+                for string_table in &string_tables {
+                    let _ = json.push(string_table.to_json());
+                }
+
+                if args.pretty || args.string_table_pretty {
+                    if let Err(e) = f.write_all(json::stringify_pretty(json, 2).as_bytes()) {
+                        error!(
+                            "Try to write string table to {} failed, {}",
+                            args.output_string_table_json, e
+                        );
+                        has_error = true;
+                    }
+                } else if let Err(e) = f.write_all(json::stringify(json).as_bytes()) {
+                    error!(
+                        "Try to write string table to {} failed, {}",
+                        args.output_string_table_json, e
+                    );
+                    has_error = true;
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Try to open {} to write string table failed, {}",
+                    args.output_string_table_json, e
+                );
+                has_error = true;
+            }
+        }
+    }
+
+    // Dump string table text
+    if !args.output_string_table_text.is_empty() {
+        match File::create(&args.output_string_table_text) {
+            Ok(mut f) => {
+                let mut text: HashSet<String> = HashSet::new();
+                for string_table in &string_tables {
+                    text.extend(string_table.to_text());
+                }
+
+                for line in text {
+                    let _ = f.write(line.as_bytes());
+                    let _ = f.write(b"\n");
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Try to open {} to write string table failed, {}",
+                    args.output_string_table_text, e
+                );
+                has_error = true;
+            }
+        }
     }
 
     if has_error {

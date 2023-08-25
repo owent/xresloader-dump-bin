@@ -33,6 +33,8 @@ pub struct Xresloader_data_source {
     pub file: ::std::string::String,
     // @@protoc_insertion_point(field:org.xresloader.pb.xresloader_data_source.sheet)
     pub sheet: ::std::string::String,
+    // @@protoc_insertion_point(field:org.xresloader.pb.xresloader_data_source.count)
+    pub count: i32,
     // special fields
     // @@protoc_insertion_point(special_field:org.xresloader.pb.xresloader_data_source.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -50,7 +52,7 @@ impl Xresloader_data_source {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(3);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "file",
@@ -61,6 +63,11 @@ impl Xresloader_data_source {
             "sheet",
             |m: &Xresloader_data_source| { &m.sheet },
             |m: &mut Xresloader_data_source| { &mut m.sheet },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "count",
+            |m: &Xresloader_data_source| { &m.count },
+            |m: &mut Xresloader_data_source| { &mut m.count },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Xresloader_data_source>(
             "xresloader_data_source",
@@ -86,6 +93,9 @@ impl ::protobuf::Message for Xresloader_data_source {
                 18 => {
                     self.sheet = is.read_string()?;
                 },
+                24 => {
+                    self.count = is.read_int32()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -104,6 +114,9 @@ impl ::protobuf::Message for Xresloader_data_source {
         if !self.sheet.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.sheet);
         }
+        if self.count != 0 {
+            my_size += ::protobuf::rt::int32_size(3, self.count);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -115,6 +128,9 @@ impl ::protobuf::Message for Xresloader_data_source {
         }
         if !self.sheet.is_empty() {
             os.write_string(2, &self.sheet)?;
+        }
+        if self.count != 0 {
+            os.write_int32(3, self.count)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -135,6 +151,7 @@ impl ::protobuf::Message for Xresloader_data_source {
     fn clear(&mut self) {
         self.file.clear();
         self.sheet.clear();
+        self.count = 0;
         self.special_fields.clear();
     }
 
@@ -142,6 +159,7 @@ impl ::protobuf::Message for Xresloader_data_source {
         static instance: Xresloader_data_source = Xresloader_data_source {
             file: ::std::string::String::new(),
             sheet: ::std::string::String::new(),
+            count: 0,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -538,18 +556,19 @@ impl ::protobuf::reflect::ProtobufValue for Xresloader_datablocks {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x12pb_header_v3.proto\x12\x11org.xresloader.pb\"B\n\x16xresloader_dat\
+    \n\x12pb_header_v3.proto\x12\x11org.xresloader.pb\"X\n\x16xresloader_dat\
     a_source\x12\x12\n\x04file\x18\x01\x20\x01(\tR\x04file\x12\x14\n\x05shee\
-    t\x18\x02\x20\x01(\tR\x05sheet\"\xea\x01\n\x11xresloader_header\x12\x19\
-    \n\x08xres_ver\x18\x01\x20\x01(\tR\x07xresVer\x12\x19\n\x08data_ver\x18\
-    \x02\x20\x01(\tR\x07dataVer\x12\x14\n\x05count\x18\x03\x20\x01(\rR\x05co\
-    unt\x12\x1b\n\thash_code\x18\x04\x20\x01(\tR\x08hashCode\x12\x20\n\x0bde\
-    scription\x18\x05\x20\x01(\tR\x0bdescription\x12J\n\x0bdata_source\x18\
-    \x0b\x20\x03(\x0b2).org.xresloader.pb.xresloader_data_sourceR\ndataSourc\
-    e\"\xa0\x01\n\x15xresloader_datablocks\x12<\n\x06header\x18\x01\x20\x01(\
-    \x0b2$.org.xresloader.pb.xresloader_headerR\x06header\x12\x1d\n\ndata_bl\
-    ock\x18\x02\x20\x03(\x0cR\tdataBlock\x12*\n\x11data_message_type\x18\x03\
-    \x20\x01(\tR\x0fdataMessageTypeb\x06proto3\
+    t\x18\x02\x20\x01(\tR\x05sheet\x12\x14\n\x05count\x18\x03\x20\x01(\x05R\
+    \x05count\"\xea\x01\n\x11xresloader_header\x12\x19\n\x08xres_ver\x18\x01\
+    \x20\x01(\tR\x07xresVer\x12\x19\n\x08data_ver\x18\x02\x20\x01(\tR\x07dat\
+    aVer\x12\x14\n\x05count\x18\x03\x20\x01(\rR\x05count\x12\x1b\n\thash_cod\
+    e\x18\x04\x20\x01(\tR\x08hashCode\x12\x20\n\x0bdescription\x18\x05\x20\
+    \x01(\tR\x0bdescription\x12J\n\x0bdata_source\x18\x0b\x20\x03(\x0b2).org\
+    .xresloader.pb.xresloader_data_sourceR\ndataSource\"\xa0\x01\n\x15xreslo\
+    ader_datablocks\x12<\n\x06header\x18\x01\x20\x01(\x0b2$.org.xresloader.p\
+    b.xresloader_headerR\x06header\x12\x1d\n\ndata_block\x18\x02\x20\x03(\
+    \x0cR\tdataBlock\x12*\n\x11data_message_type\x18\x03\x20\x01(\tR\x0fdata\
+    MessageTypeb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
