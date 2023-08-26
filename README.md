@@ -26,13 +26,13 @@ You can use environment `RUST_LOG=<level>` to control log level and `RUST_LOG_ST
 Example output: `./xresloader-dump-bin -p ./sample-conf/kind.pb -b ./sample-data/role_upgrade_cfg.bin` (Without `--pretty`)
 
 ```bash
-======================== Header: .\sample-data\role_upgrade_cfg.bin ========================
+======================== Header: ./sample-data/role_upgrade_cfg.bin ========================
 xresloader version: 2.8.0
 data version: 2.8.0.20200609192757
 data count: 11
 hash code: sha256:718d22f78006e5d34d6b68eb56e204a00f4174737b6864e247b661d8963c7df3
 description:
-============ Body: .\sample-data\role_upgrade_cfg.bin -> role_upgrade_cfg ============
+============ Body: ./sample-data/role_upgrade_cfg.bin -> role_upgrade_cfg ============
 [
     {"Id": 10001, "Level": 1},
     {"Id": 10001, "Level": 2, "CostType": 10001, "CostValue": 50},
@@ -46,6 +46,22 @@ description:
     {"Id": 10001, "Level": 10, "CostType": 10101, "CostValue": 450},
     {"Id": 10001, "Level": 11, "CostType": 10101, "CostValue": 500},
 ]
+```
+
+### Dump string in binary files into a standalone json/text file
+
+This can be used to generate string table data source for UnrealEngine(UE).
+
+```bash
+./xresloader-dump-bin.exe -p ../xresloader/sample/proto_v3/kind.pb \
+    -b ../xresloader/sample/proto_v3/arr_in_arr_cfg.bin \
+    -b ../xresloader/sample/proto_v3/event_cfg.bin \
+    --output-string-table-json string-table.json --output-string-table-text string-table.txt \
+    --silence --string-table-pretty
+
+# strings will be saved in string-table.json and string-table.txt
+# We can also use --string-table-value-regex-rule and --string-table-value-regex-file to filter contents
+#   and use --string-table-field-path-file to filter contents by which protocol paths
 ```
 
 https://doc.rust-lang.org/cargo/reference/config.html
