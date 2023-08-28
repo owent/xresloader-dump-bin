@@ -60,8 +60,9 @@ This can be used to generate string table data source for UnrealEngine(UE).
     --silence --string-table-pretty
 
 # strings will be saved in string-table.json and string-table.txt
-# We can also use --string-table-value-regex-rule and --string-table-value-regex-file to filter contents
-#   and use --string-table-field-path-file to filter contents by which protocol paths
+# You can also use --string-table-include-value-regex-rule/--string-table-include-value-regex-file and --string-table-exclude-value-regex-rule/--string-table-exclude-value-regex-file to filter contents.
+# Use --string-table-include-field-path-file/--string-table-exclude-field-path-file to filter contents by protocol field paths
+# Or use --string-table-include-message-path-file/--string-table-exclude-message-path-file to filter contents by protocol message paths
 ```
 
 https://doc.rust-lang.org/cargo/reference/config.html
