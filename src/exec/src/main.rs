@@ -28,6 +28,7 @@ use protobuf::{descriptor::FileDescriptorSet, Message, MessageDyn, MessageFull};
 // use xresloader_protocol::proto::Xresloader_datablocks;
 
 mod file_descriptor_index;
+mod ordered_generator;
 
 use file_descriptor_index::FileDescriptorIndex;
 
@@ -781,9 +782,10 @@ fn main() {
                                     if args.pretty {
                                         if args.plain {
                                             info!("  ------------ Row {} ------------\n{}", row_index, protobuf::text_format::print_to_string_pretty(message.as_ref()));
+                                            continue;
                                         }
                                         if let Ok(output) = protobuf_json_mapping::print_to_string(message.as_ref()) {
-                                            info!("    {},",  json::stringify_pretty(json::parse(&output).unwrap(), 2));
+                                            info!("    {},",  ordered_generator::stringify_pretty(json::parse(&output).unwrap(), 2));
                                         } else {
                                             info!("{}", protobuf::text_format::print_to_string_pretty(message.as_ref()));
                                         }
@@ -793,9 +795,9 @@ fn main() {
                                             continue;
                                         }
                                         if let Ok(output) = protobuf_json_mapping::print_to_string(message.as_ref()) {
-                                            info!("    {},", output);
+                                            info!("    {},",  ordered_generator::stringify(json::parse(&output).unwrap()));
                                         } else {
-                                            info!("{}", protobuf::text_format::print_to_string(message.as_ref()));
+                                            info!("{}", protobuf::text_format::print_to_string_pretty(message.as_ref()));
                                         }
                                     }
                                 }

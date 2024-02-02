@@ -42,6 +42,10 @@ pub mod exts {
 
     pub const field_not_null: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1003, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
 
+    pub const map_key_validator: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1004, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
+    pub const map_value_validator: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1005, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
     pub const verifier: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1009, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const field_description: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1011, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
@@ -81,12 +85,15 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     eldOptionsR\tvalidator:H\n\x10field_unique_tag\x18\xea\x07\x20\x03(\t\
     \x12\x1d.google.protobuf.FieldOptionsR\x0efieldUniqueTag:D\n\x0efield_no\
     t_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\
-    \x0cfieldNotNull::\n\x08verifier\x18\xf1\x07\x20\x01(\t\x12\x1d.google.p\
-    rotobuf.FieldOptionsR\x08verifier:K\n\x11field_description\x18\xf3\x07\
-    \x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldDescription:?\
-    \n\x0bfield_alias\x18\xf4\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOp\
-    tionsR\nfieldAlias:?\n\x0bfield_ratio\x18\xf5\x07\x20\x01(\x05\x12\x1d.g\
-    oogle.protobuf.FieldOptionsR\nfieldRatio:G\n\x0ffield_separator\x18\xf6\
+    \x0cfieldNotNull:J\n\x11map_key_validator\x18\xec\x07\x20\x01(\t\x12\x1d\
+    .google.protobuf.FieldOptionsR\x0fmapKeyValidator:N\n\x13map_value_valid\
+    ator\x18\xed\x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x11map\
+    ValueValidator::\n\x08verifier\x18\xf1\x07\x20\x01(\t\x12\x1d.google.pro\
+    tobuf.FieldOptionsR\x08verifier:K\n\x11field_description\x18\xf3\x07\x20\
+    \x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldDescription:?\n\
+    \x0bfield_alias\x18\xf4\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOpti\
+    onsR\nfieldAlias:?\n\x0bfield_ratio\x18\xf5\x07\x20\x01(\x05\x12\x1d.goo\
+    gle.protobuf.FieldOptionsR\nfieldRatio:G\n\x0ffield_separator\x18\xf6\
     \x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x0efieldSeparator:\
     E\n\x0efield_required\x18\xf7\x07\x20\x01(\x08\x12\x1d.google.protobuf.F\
     ieldOptionsR\rfieldRequired:L\n\x12field_origin_value\x18\xf8\x07\x20\
