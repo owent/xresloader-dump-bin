@@ -25,6 +25,68 @@
 /// of protobuf runtime.
 const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_3_2_0;
 
+#[derive(Clone,Copy,PartialEq,Eq,Debug,Hash)]
+// @@protoc_insertion_point(enum:org.xresloader.ListStripOption)
+pub enum ListStripOption {
+    // @@protoc_insertion_point(enum_value:org.xresloader.ListStripOption.LIST_STRIP_DEFAULT)
+    LIST_STRIP_DEFAULT = 0,
+    // @@protoc_insertion_point(enum_value:org.xresloader.ListStripOption.LIST_STRIP_NOTHING)
+    LIST_STRIP_NOTHING = 1,
+    // @@protoc_insertion_point(enum_value:org.xresloader.ListStripOption.LIST_STRIP_TAIL)
+    LIST_STRIP_TAIL = 2,
+    // @@protoc_insertion_point(enum_value:org.xresloader.ListStripOption.LIST_STRIP_ALL)
+    LIST_STRIP_ALL = 3,
+}
+
+impl ::protobuf::Enum for ListStripOption {
+    const NAME: &'static str = "ListStripOption";
+
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<ListStripOption> {
+        match value {
+            0 => ::std::option::Option::Some(ListStripOption::LIST_STRIP_DEFAULT),
+            1 => ::std::option::Option::Some(ListStripOption::LIST_STRIP_NOTHING),
+            2 => ::std::option::Option::Some(ListStripOption::LIST_STRIP_TAIL),
+            3 => ::std::option::Option::Some(ListStripOption::LIST_STRIP_ALL),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    const VALUES: &'static [ListStripOption] = &[
+        ListStripOption::LIST_STRIP_DEFAULT,
+        ListStripOption::LIST_STRIP_NOTHING,
+        ListStripOption::LIST_STRIP_TAIL,
+        ListStripOption::LIST_STRIP_ALL,
+    ];
+}
+
+impl ::protobuf::EnumFull for ListStripOption {
+    fn enum_descriptor() -> ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().enum_by_package_relative_name("ListStripOption").unwrap()).clone()
+    }
+
+    fn descriptor(&self) -> ::protobuf::reflect::EnumValueDescriptor {
+        let index = *self as usize;
+        Self::enum_descriptor().value_by_index(index)
+    }
+}
+
+impl ::std::default::Default for ListStripOption {
+    fn default() -> Self {
+        ListStripOption::LIST_STRIP_DEFAULT
+    }
+}
+
+impl ListStripOption {
+    fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
+        ::protobuf::reflect::GeneratedEnumDescriptorData::new::<ListStripOption>("ListStripOption")
+    }
+}
+
 /// Extension fields
 pub mod exts {
 
@@ -60,11 +122,27 @@ pub mod exts {
 
     pub const field_origin_value: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1016, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
+    pub const field_allow_missing_in_plain_mode: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1017, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
+
+    pub const field_list_strip_option: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::protobuf::EnumOrUnknown<super::ListStripOption>> = ::protobuf::ext::ExtFieldOptional::new(1018, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_ENUM);
+
+    pub const field_list_min_size: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1019, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
+    pub const field_list_max_size: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1020, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
+    pub const field_list_strict_size: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::FieldOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1021, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
+
+    pub const field_tag: ::protobuf::ext::ExtFieldRepeated<::protobuf::descriptor::FieldOptions, ::std::string::String> = ::protobuf::ext::ExtFieldRepeated::new(1022, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
     pub const oneof_description: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::OneofOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1001, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const oneof_separator: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::OneofOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1002, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const oneof_not_null: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::OneofOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1003, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
+
+    pub const oneof_allow_missing_in_plain_mode: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::OneofOptions, bool> = ::protobuf::ext::ExtFieldOptional::new(1004, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_BOOL);
+
+    pub const oneof_tag: ::protobuf::ext::ExtFieldRepeated<::protobuf::descriptor::OneofOptions, ::std::string::String> = ::protobuf::ext::ExtFieldRepeated::new(1005, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
     pub const enum_description: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::EnumOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(1001, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 
@@ -75,38 +153,53 @@ pub mod exts {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x10xresloader.proto\x12\x0eorg.xresloader\x1a\x20google/protobuf/desc\
-    riptor.proto:H\n\x10file_description\x18\xe9\x07\x20\x01(\t\x12\x1c.goog\
-    le.protobuf.FileOptionsR\x0ffileDescription:I\n\x0fmsg_description\x18\
-    \xe9\x07\x20\x01(\t\x12\x1f.google.protobuf.MessageOptionsR\x0emsgDescri\
-    ption:W\n\x17msg_require_mapping_all\x18\xf3\x07\x20\x01(\x08\x12\x1f.go\
-    ogle.protobuf.MessageOptionsR\x14msgRequireMappingAll:E\n\rmsg_separator\
-    \x18\xf4\x07\x20\x01(\t\x12\x1f.google.protobuf.MessageOptionsR\x0cmsgSe\
-    parator:<\n\tvalidator\x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.Fi\
-    eldOptionsR\tvalidator:H\n\x10field_unique_tag\x18\xea\x07\x20\x03(\t\
-    \x12\x1d.google.protobuf.FieldOptionsR\x0efieldUniqueTag:D\n\x0efield_no\
-    t_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\
-    \x0cfieldNotNull:J\n\x11map_key_validator\x18\xec\x07\x20\x01(\t\x12\x1d\
-    .google.protobuf.FieldOptionsR\x0fmapKeyValidator:N\n\x13map_value_valid\
-    ator\x18\xed\x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x11map\
-    ValueValidator::\n\x08verifier\x18\xf1\x07\x20\x01(\t\x12\x1d.google.pro\
-    tobuf.FieldOptionsR\x08verifier:K\n\x11field_description\x18\xf3\x07\x20\
-    \x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldDescription:?\n\
-    \x0bfield_alias\x18\xf4\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOpti\
-    onsR\nfieldAlias:?\n\x0bfield_ratio\x18\xf5\x07\x20\x01(\x05\x12\x1d.goo\
-    gle.protobuf.FieldOptionsR\nfieldRatio:G\n\x0ffield_separator\x18\xf6\
-    \x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x0efieldSeparator:\
-    E\n\x0efield_required\x18\xf7\x07\x20\x01(\x08\x12\x1d.google.protobuf.F\
-    ieldOptionsR\rfieldRequired:L\n\x12field_origin_value\x18\xf8\x07\x20\
-    \x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldOriginValue:K\n\
-    \x11oneof_description\x18\xe9\x07\x20\x01(\t\x12\x1d.google.protobuf.One\
-    ofOptionsR\x10oneofDescription:G\n\x0foneof_separator\x18\xea\x07\x20\
-    \x01(\t\x12\x1d.google.protobuf.OneofOptionsR\x0eoneofSeparator:D\n\x0eo\
-    neof_not_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.protobuf.OneofOpti\
-    onsR\x0coneofNotNull:H\n\x10enum_description\x18\xe9\x07\x20\x01(\t\x12\
-    \x1c.google.protobuf.EnumOptionsR\x0fenumDescription:O\n\x11enumv_descri\
-    ption\x18\xe9\x07\x20\x01(\t\x12!.google.protobuf.EnumValueOptionsR\x10e\
-    numvDescription:A\n\nenum_alias\x18\xea\x07\x20\x03(\t\x12!.google.proto\
-    buf.EnumValueOptionsR\tenumAliasb\x06proto3\
+    riptor.proto*j\n\x0fListStripOption\x12\x16\n\x12LIST_STRIP_DEFAULT\x10\
+    \0\x12\x16\n\x12LIST_STRIP_NOTHING\x10\x01\x12\x13\n\x0fLIST_STRIP_TAIL\
+    \x10\x02\x12\x12\n\x0eLIST_STRIP_ALL\x10\x03:H\n\x10file_description\x18\
+    \xe9\x07\x20\x01(\t\x12\x1c.google.protobuf.FileOptionsR\x0ffileDescript\
+    ion:I\n\x0fmsg_description\x18\xe9\x07\x20\x01(\t\x12\x1f.google.protobu\
+    f.MessageOptionsR\x0emsgDescription:W\n\x17msg_require_mapping_all\x18\
+    \xf3\x07\x20\x01(\x08\x12\x1f.google.protobuf.MessageOptionsR\x14msgRequ\
+    ireMappingAll:E\n\rmsg_separator\x18\xf4\x07\x20\x01(\t\x12\x1f.google.p\
+    rotobuf.MessageOptionsR\x0cmsgSeparator:<\n\tvalidator\x18\xe9\x07\x20\
+    \x01(\t\x12\x1d.google.protobuf.FieldOptionsR\tvalidator:H\n\x10field_un\
+    ique_tag\x18\xea\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOptionsR\
+    \x0efieldUniqueTag:D\n\x0efield_not_null\x18\xeb\x07\x20\x01(\x08\x12\
+    \x1d.google.protobuf.FieldOptionsR\x0cfieldNotNull:J\n\x11map_key_valida\
+    tor\x18\xec\x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x0fmapK\
+    eyValidator:N\n\x13map_value_validator\x18\xed\x07\x20\x01(\t\x12\x1d.go\
+    ogle.protobuf.FieldOptionsR\x11mapValueValidator::\n\x08verifier\x18\xf1\
+    \x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOptionsR\x08verifier:K\n\
+    \x11field_description\x18\xf3\x07\x20\x01(\t\x12\x1d.google.protobuf.Fie\
+    ldOptionsR\x10fieldDescription:?\n\x0bfield_alias\x18\xf4\x07\x20\x03(\t\
+    \x12\x1d.google.protobuf.FieldOptionsR\nfieldAlias:?\n\x0bfield_ratio\
+    \x18\xf5\x07\x20\x01(\x05\x12\x1d.google.protobuf.FieldOptionsR\nfieldRa\
+    tio:G\n\x0ffield_separator\x18\xf6\x07\x20\x01(\t\x12\x1d.google.protobu\
+    f.FieldOptionsR\x0efieldSeparator:E\n\x0efield_required\x18\xf7\x07\x20\
+    \x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\rfieldRequired:L\n\x12fi\
+    eld_origin_value\x18\xf8\x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOpt\
+    ionsR\x10fieldOriginValue:g\n!field_allow_missing_in_plain_mode\x18\xf9\
+    \x07\x20\x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\x1cfieldAllowMis\
+    singInPlainMode:v\n\x17field_list_strip_option\x18\xfa\x07\x20\x01(\x0e2\
+    \x1f.org.xresloader.ListStripOption\x12\x1d.google.protobuf.FieldOptions\
+    R\x14fieldListStripOption:M\n\x13field_list_min_size\x18\xfb\x07\x20\x01\
+    (\t\x12\x1d.google.protobuf.FieldOptionsR\x10fieldListMinSize:M\n\x13fie\
+    ld_list_max_size\x18\xfc\x07\x20\x01(\t\x12\x1d.google.protobuf.FieldOpt\
+    ionsR\x10fieldListMaxSize:S\n\x16field_list_strict_size\x18\xfd\x07\x20\
+    \x01(\x08\x12\x1d.google.protobuf.FieldOptionsR\x13fieldListStrictSize:;\
+    \n\tfield_tag\x18\xfe\x07\x20\x03(\t\x12\x1d.google.protobuf.FieldOption\
+    sR\x08fieldTag:K\n\x11oneof_description\x18\xe9\x07\x20\x01(\t\x12\x1d.g\
+    oogle.protobuf.OneofOptionsR\x10oneofDescription:G\n\x0foneof_separator\
+    \x18\xea\x07\x20\x01(\t\x12\x1d.google.protobuf.OneofOptionsR\x0eoneofSe\
+    parator:D\n\x0eoneof_not_null\x18\xeb\x07\x20\x01(\x08\x12\x1d.google.pr\
+    otobuf.OneofOptionsR\x0coneofNotNull:g\n!oneof_allow_missing_in_plain_mo\
+    de\x18\xec\x07\x20\x01(\x08\x12\x1d.google.protobuf.OneofOptionsR\x1cone\
+    ofAllowMissingInPlainMode:;\n\toneof_tag\x18\xed\x07\x20\x03(\t\x12\x1d.\
+    google.protobuf.OneofOptionsR\x08oneofTag:H\n\x10enum_description\x18\
+    \xe9\x07\x20\x01(\t\x12\x1c.google.protobuf.EnumOptionsR\x0fenumDescript\
+    ion:O\n\x11enumv_description\x18\xe9\x07\x20\x01(\t\x12!.google.protobuf\
+    .EnumValueOptionsR\x10enumvDescription:A\n\nenum_alias\x18\xea\x07\x20\
+    \x03(\t\x12!.google.protobuf.EnumValueOptionsR\tenumAliasb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -126,7 +219,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             let mut deps = ::std::vec::Vec::with_capacity(1);
             deps.push(::protobuf::descriptor::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(0);
-            let mut enums = ::std::vec::Vec::with_capacity(0);
+            let mut enums = ::std::vec::Vec::with_capacity(1);
+            enums.push(ListStripOption::generated_enum_descriptor_data());
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),
                 deps,

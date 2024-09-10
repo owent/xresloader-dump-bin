@@ -1,5 +1,3 @@
 [workspace]
-members = [
-    "src/protocol",
-    "src/exec",
-]
+resolver = "2"
+members = ["src/protocol", "src/exec"]
