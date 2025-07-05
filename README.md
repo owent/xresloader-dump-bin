@@ -65,6 +65,8 @@ This can be used to generate string table data source for UnrealEngine(UE).
 # Or use --string-table-include-message-path-file/--string-table-exclude-message-path-file to filter contents by protocol message paths
 ```
 
-https://doc.rust-lang.org/cargo/reference/config.html
+## For developer
+
+- <https://doc.rust-lang.org/cargo/reference/config.htm>
 
 [1]: https://github.com/xresloader/xresloader

@@ -105,7 +105,7 @@ pub struct DumpOptions {
     pub output_tagged_field_text: String,
 
     /// Field tags(can be used mulpitle times)
-    #[arg(long, value_parser, action = ArgAction::Append, value_name = "FIELD TAGS")]
+    #[arg(short, long, value_parser, action = ArgAction::Append, value_name = "FIELD TAGS")]
     pub tagged_field_tags: Vec<String>,
 
     /// Field value include matching rule for string table(can be used mulpitle times)
@@ -139,4 +139,8 @@ pub struct DumpOptions {
     /// Load message include path from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "FILE PATH")]
     pub tagged_field_include_message_path_file: Vec<String>,
+
+    /// String table pretty mode
+    #[arg(long, value_parser, default_value = "false")]
+    pub tagged_field_pretty: bool,
 }

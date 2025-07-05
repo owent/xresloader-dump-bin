@@ -111,24 +111,37 @@ impl StringTableFilter {
         true
     }
 
-    pub fn filter_field_full_name(&self, input: &str) -> bool {
-        if !self.include_field_paths.is_empty() && !self.include_field_paths.contains(input) {
+    pub fn filter_field(&self, field_desc: &protobuf::reflect::FieldDescriptor) -> bool {
+        if self.include_field_paths.is_empty() && self.exclude_field_paths.is_empty() {
+            return true;
+        }
+
+        let full_name = field_desc.full_name();
+
+        if !self.include_field_paths.is_empty() && !self.include_field_paths.contains(&full_name) {
             return false;
         }
 
-        if self.exclude_field_paths.contains(input) {
+        if self.exclude_field_paths.contains(&full_name) {
             return false;
         }
 
         true
     }
 
-    pub fn filter_message_full_name(&self, input: &str) -> bool {
-        if !self.include_message_paths.is_empty() && !self.include_message_paths.contains(input) {
+    pub fn filter_message(&self, message_desc: &protobuf::reflect::MessageDescriptor) -> bool {
+        if !self.include_message_paths.is_empty()
+            && !self
+                .include_message_paths
+                .contains(message_desc.full_name())
+        {
             return false;
         }
 
-        if self.exclude_message_paths.contains(input) {
+        if self
+            .exclude_message_paths
+            .contains(message_desc.full_name())
+        {
             return false;
         }
 
@@ -143,7 +156,7 @@ impl StringTableContent {
         filter: &StringTableFilter,
         data_source: &StringTableDataSource,
     ) {
-        if !filter.filter_message_full_name(message.descriptor_dyn().full_name()) {
+        if !filter.filter_message(&message.descriptor_dyn()) {
             return;
         }
 
@@ -158,7 +171,7 @@ impl StringTableContent {
                                 self.load_message(m.deref(), filter, data_source);
                             }
                             protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field_full_name(&field.full_name()) {
+                                if !filter.filter_field(&field) {
                                     return;
                                 }
 
@@ -186,7 +199,7 @@ impl StringTableContent {
                     }
                 }
                 protobuf::reflect::RuntimeFieldType::Repeated(_) => {
-                    if !filter.filter_field_full_name(&field.full_name()) {
+                    if !filter.filter_field(&field) {
                         return;
                     }
 
@@ -227,7 +240,7 @@ impl StringTableContent {
                                 self.load_message(m.deref(), filter, data_source);
                             }
                             protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field_full_name(&field.full_name()) {
+                                if !filter.filter_field(&field) {
                                     return;
                                 }
 
@@ -258,7 +271,7 @@ impl StringTableContent {
                                 self.load_message(m.deref(), filter, data_source);
                             }
                             protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field_full_name(&field.full_name()) {
+                                if !filter.filter_field(&field) {
                                     return;
                                 }
 
@@ -342,7 +355,7 @@ impl StringTableContent {
     }
 }
 
-pub fn build_string_table_filter(args: &DumpOptions) -> (bool, StringTableFilter) {
+pub fn build_string_table_filter(args: &DumpOptions) -> (StringTableFilter, bool) {
     let mut ret: StringTableFilter = StringTableFilter::default();
     let mut has_error = false;
 
@@ -428,7 +441,7 @@ pub fn build_string_table_filter(args: &DumpOptions) -> (bool, StringTableFilter
         });
     }
 
-    (has_error, ret)
+    (ret, has_error)
 }
 
 pub fn dump_string_table_to_text_file(

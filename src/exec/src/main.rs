@@ -46,8 +46,13 @@ fn main() {
     let mut desc_index = FileDescriptorIndex::new();
 
     let mut string_tables: Vec<string_table::StringTableContent> = vec![];
-    let (has_string_table_error, string_table_filter) =
+    let (string_table_filter, has_string_table_error) =
         string_table::build_string_table_filter(&args);
+
+    let mut tagged_fields: Vec<tagged_field::TaggedFieldContent> = vec![];
+    let (mut tagged_field_filter, has_tagged_field_error) =
+        tagged_field::build_tagged_field_filter(&args);
+
     for pb_file in args.pb_file {
         debug!("Load pb file: {}", pb_file);
         match std::fs::OpenOptions::new()
@@ -85,7 +90,7 @@ fn main() {
         }
     }
 
-    let mut has_error = has_string_table_error;
+    let mut has_error = has_string_table_error || has_tagged_field_error;
 
     for bin_file in args.bin_file {
         debug!("Load xresloader output binary file: {}", bin_file);
@@ -142,6 +147,12 @@ fn main() {
                         if !args.output_string_table_json.is_empty() || !args.output_string_table_text.is_empty() {
                             current_string_table_head = Some(string_table::StringTableBinarySource::new(&data_blocks, bin_file.clone()));
                         }
+
+                        let mut current_tagged_field_head : Option<tagged_field::TaggedFieldBinarySource> = None;
+                        if !args.output_tagged_field_json.is_empty() || !args.output_tagged_field_text.is_empty() {
+                            current_tagged_field_head = Some(tagged_field::TaggedFieldBinarySource::new(&data_blocks, bin_file.clone()));
+                        }
+
                         if !args.silence {
                             info!("============ Body: {} -> {} ============", &bin_file, &data_blocks.data_message_type);
                         }
@@ -149,6 +160,7 @@ fn main() {
                         if !args.plain && !args.head_only && !args.silence {
                             info!("[");
                         }
+
                         let mut current_string_table :Option<string_table::StringTableContent> = None;
                         if let Some(head) = current_string_table_head {
                             current_string_table = Some(string_table::StringTableContent {
@@ -156,16 +168,27 @@ fn main() {
                                 body: HashMap::new(),
                             });
                         }
-
-                        let mut fallback_data_source =
+                        let mut fallback_string_table_data_source =
                             string_table::StringTableDataSource::default();
+
+                        let mut current_tagged_field :Option<tagged_field::TaggedFieldContent> = None;
+                        if let Some(head) = current_tagged_field_head {
+                            current_tagged_field = Some(tagged_field::TaggedFieldContent {
+                                head,
+                                body: HashMap::new(),
+                            });
+                        }
+                        let mut fallback_tagged_field_data_source =
+                            tagged_field::TaggedFieldDataSource::default();
+
                         let mut current_data_source_idx = 0;
                         let mut current_data_source_left_row = 0;
                         for row_data_block in &data_blocks.data_block {
                             row_index += 1;
                             if current_data_source_left_row <= 0 && current_data_source_idx < data_blocks.header.data_source.len() {
                                 current_data_source_left_row = data_blocks.header.data_source[current_data_source_idx].count;
-                                fallback_data_source = string_table::StringTableDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
+                                fallback_string_table_data_source = string_table::StringTableDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
+                                fallback_tagged_field_data_source = tagged_field::TaggedFieldDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
                                 current_data_source_idx += 1;
                             }
                             if current_data_source_left_row > 0 {
@@ -175,7 +198,11 @@ fn main() {
                             match message_descriptor.parse_from_bytes(row_data_block) {
                                 Ok(message) => {
                                     if let Some(ref mut string_table) = current_string_table {
-                                        string_table.load_message(message.as_ref(), &string_table_filter, &fallback_data_source);
+                                        string_table.load_message(message.as_ref(), &string_table_filter, &fallback_string_table_data_source);
+                                    }
+
+                                    if let Some(ref mut tagged_field) = current_tagged_field {
+                                        tagged_field.load_message(message.as_ref(), &mut tagged_field_filter, &fallback_tagged_field_data_source);
                                     }
 
                                     if args.head_only || args.silence {
@@ -220,6 +247,12 @@ fn main() {
                                 string_tables.push(string_table);
                             }
                         }
+
+                        if let Some(tagged_field) = current_tagged_field {
+                            if !tagged_field.body.is_empty() {
+                                tagged_fields.push(tagged_field);
+                            }
+                        }
                     }
                     Err(e) => {
                         error!("Parse {} from file {} failed, {}, ignore this file", xresloader_protocol::proto::pb_header_v3::Xresloader_datablocks::descriptor().full_name(), bin_file, e);
@@ -255,6 +288,27 @@ fn main() {
         if let Err(_) = string_table::dump_string_table_to_text_file(
             &string_tables,
             &args.output_string_table_text,
+        ) {
+            has_error = true;
+        }
+    }
+
+    // Dump tagged field json
+    if !args.output_tagged_field_json.is_empty() {
+        if let Err(_) = tagged_field::dump_tagged_field_to_json_file(
+            &tagged_fields,
+            &args.output_tagged_field_json,
+            args.pretty || args.tagged_field_pretty,
+        ) {
+            has_error = true;
+        }
+    }
+
+    // Dump tagged field text
+    if !args.output_tagged_field_text.is_empty() {
+        if let Err(_) = tagged_field::dump_tagged_field_to_text_file(
+            &tagged_fields,
+            &args.output_tagged_field_text,
         ) {
             has_error = true;
         }
