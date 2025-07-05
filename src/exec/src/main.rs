@@ -149,7 +149,7 @@ fn main() {
                         }
 
                         let mut current_tagged_field_head : Option<tagged_field::TaggedFieldBinarySource> = None;
-                        if !args.output_tagged_field_json.is_empty() || !args.output_tagged_field_text.is_empty() {
+                        if !args.output_tagged_data_json.is_empty() || !args.output_tagged_data_text.is_empty() {
                             current_tagged_field_head = Some(tagged_field::TaggedFieldBinarySource::new(&data_blocks, bin_file.clone()));
                         }
 
@@ -293,22 +293,22 @@ fn main() {
         }
     }
 
-    // Dump tagged field json
-    if !args.output_tagged_field_json.is_empty() {
+    // Dump tagged data json
+    if !args.output_tagged_data_json.is_empty() {
         if let Err(_) = tagged_field::dump_tagged_field_to_json_file(
             &tagged_fields,
-            &args.output_tagged_field_json,
-            args.pretty || args.tagged_field_pretty,
+            &args.output_tagged_data_json,
+            args.pretty || args.tagged_data_pretty,
         ) {
             has_error = true;
         }
     }
 
-    // Dump tagged field text
-    if !args.output_tagged_field_text.is_empty() {
+    // Dump tagged data text
+    if !args.output_tagged_data_text.is_empty() {
         if let Err(_) = tagged_field::dump_tagged_field_to_text_file(
             &tagged_fields,
-            &args.output_tagged_field_text,
+            &args.output_tagged_data_text,
         ) {
             has_error = true;
         }
