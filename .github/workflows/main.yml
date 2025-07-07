@@ -162,7 +162,9 @@ jobs:
       matrix:
         os: [macOS-latest]
         rust: [stable]
-        target: [x86_64-apple-darwin]
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
