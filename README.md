@@ -65,6 +65,24 @@ This can be used to generate string table data source for UnrealEngine(UE).
 # Or use --string-table-include-message-path-file/--string-table-exclude-message-path-file to filter contents by protocol message paths
 ```
 
+### Dump tagged field or oneof in binary files into a standalone json/text file
+
+This can be used to generate string table data source for UnrealEngine(UE).
+
+```bash
+./xresloader-dump-bin.exe -p ../xresloader/sample/proto_v3/kind.pb \
+    -b ../xresloader/sample/proto_v3/arr_in_arr_cfg.bin \
+    -b ../xresloader/sample/proto_v3/event_cfg.bin \
+    --tagged-field-tags server_only --tagged-oneof-tags server_only
+    --output-tagged-data-json tagged-data.json --output-tagged-data-text tagged-data.txt \
+    --silence --tagged-data-pretty
+
+# all fields tagged as server_only and all field in oneof tagged as server_only will be saved in tagged-data.json and tagged-data.txt
+# You can also use --tagged-data-include-value-regex-rule/--tagged-data-include-value-regex-file and --tagged-data-exclude-value-regex-rule/--tagged-data-exclude-value-regex-file to filter contents.
+# Use --tagged-data-include-field-path-file/--tagged-data-exclude-field-path-file to filter contents by protocol field paths
+# Or use --tagged-data-include-message-path-file/--tagged-data-exclude-message-path-file to filter contents by protocol message paths
+```
+
 ## For developer
 
 - <https://doc.rust-lang.org/cargo/reference/config.htm>

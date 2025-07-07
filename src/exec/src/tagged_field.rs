@@ -6,11 +6,12 @@ use std::ops::Deref;
 use super::dump_options::DumpOptions;
 use super::utility;
 
-use protobuf::reflect::ProtobufValue;
-use protobuf::MessageField;
+use protobuf::reflect::ReflectValueRef;
+
 use protobuf::{Message, MessageDyn};
 use xresloader_protocol::proto::pb_header_v3::{Xresloader_data_source, Xresloader_datablocks};
-use xresloader_protocol::proto::xresloader::exts::field_tag;
+// use xresloader_protocol::proto::xresloader::exts::field_tag;
+// use xresloader_protocol::proto::xresloader::exts::oneof_tag;
 
 #[derive(Clone)]
 pub struct TaggedFieldDataSource {
@@ -44,7 +45,8 @@ pub struct TaggedFieldFilter {
     blacklist_full_names: HashSet<String>,
     whitelist_full_names: HashSet<String>,
 
-    pub select_tags: HashSet<String>,
+    pub select_field_tags: HashSet<String>,
+    pub select_oneof_tags: HashSet<String>,
 
     pub value_include_regex_rules: Vec<regex::Regex>,
     pub value_exclude_regex_rules: Vec<regex::Regex>,
@@ -98,6 +100,10 @@ impl TaggedFieldBinarySource {
 
 impl TaggedFieldFilter {
     pub fn filter_value(&self, input: &str) -> bool {
+        if input.trim().is_empty() {
+            return false;
+        }
+
         if !self.value_include_regex_rules.is_empty() {
             let mut matched = false;
             for rule in &self.value_include_regex_rules {
@@ -119,30 +125,98 @@ impl TaggedFieldFilter {
         true
     }
 
-    fn internal_filter_field(&self, field_desc: &protobuf::reflect::FieldDescriptor) -> bool {
-        if self.select_tags.is_empty() {
+    fn internal_filter_field(&mut self, field_desc: &protobuf::reflect::FieldDescriptor) -> bool {
+        if self.select_field_tags.is_empty() && self.select_oneof_tags.is_empty() {
             return false;
         }
 
+        let full_name = field_desc.full_name();
+        let mut has_field_tag = false;
         if let Some(ext) = field_desc.proto().options.as_ref() {
             let nfs = ext.unknown_fields();
             // field_tag.field_number is 1022 and it's private
             // FIXME: use a public API to get field number after upgrade to protobuf v4+
-            let field_tag_type = ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING;
-            // type FieldTagType = RuntimeTypeString;
+            // let field_tag_type = ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING;
+            let field_tag_number = 1022;
 
-            nfs.get(1022).and_then(|u| {
-                // FieldTagType::get_from_unknown(u, field_tag_type)
-                //
-                if let LengthDelimited(tag_values) = u {
+            for (k, v) in nfs.iter() {
+                if k != field_tag_number {
+                    continue;
                 }
-            });
 
+                if let protobuf::UnknownValueRef::LengthDelimited(tag_values) = v {
+                    match String::from_utf8(tag_values.to_vec()) {
+                        Ok(one_field_tag) => {
+                            if self.select_field_tags.contains(&one_field_tag) {
+                                has_field_tag = true;
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to parse field tag {}(which should be org.xresloader.field_tag) as string, maybe corrupted data, {}", field_tag_number, e);
+                        }
+                    }
+                }
+
+                if has_field_tag {
+                    break;
+                }
+            }
+        }
+
+        if !has_field_tag && !self.select_oneof_tags.is_empty() {
+            if let Some(oneof_desc) = field_desc.containing_oneof() {
+                let oneof_full_name = oneof_desc.full_name();
+                if self.whitelist_full_names.contains(&oneof_full_name) {
+                    has_field_tag = true;
+                } else if self.blacklist_full_names.contains(&oneof_full_name) {
+                    has_field_tag = false;
+                } else if let Some(ext) = oneof_desc.proto().options.as_ref() {
+                    let nfs = ext.unknown_fields();
+                    // field_tag.field_number is 1005 and it's private
+                    // FIXME: use a public API to get field number after upgrade to protobuf v4+
+                    // let field_tag_type = ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING;
+                    let field_oneof_number = 1005;
+
+                    for (k, v) in nfs.iter() {
+                        if k != field_oneof_number {
+                            continue;
+                        }
+
+                        if let protobuf::UnknownValueRef::LengthDelimited(tag_values) = v {
+                            match String::from_utf8(tag_values.to_vec()) {
+                                Ok(one_oneof_tag) => {
+                                    if self.select_oneof_tags.contains(&one_oneof_tag) {
+                                        has_field_tag = true;
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Failed to parse field tag {}(which should be org.xresloader.oneof_tag) as string, maybe corrupted data, {}", field_oneof_number, e);
+                                }
+                            }
+                        }
+
+                        if has_field_tag {
+                            break;
+                        }
+                    }
+
+                    if has_field_tag {
+                        self.whitelist_full_names.insert(oneof_full_name);
+                    } else {
+                        self.blacklist_full_names.insert(oneof_full_name);
+                    }
+                }
+            }
+        }
+
+        if !has_field_tag {
+            return false;
+        }
 
         if self.include_field_paths.is_empty() && self.exclude_field_paths.is_empty() {
             return true;
         }
-        let full_name = field_desc.full_name();
+
         if !self.include_field_paths.is_empty() && !self.include_field_paths.contains(&full_name) {
             return false;
         }
@@ -194,6 +268,22 @@ impl TaggedFieldFilter {
 }
 
 impl TaggedFieldContent {
+    fn pb_value_to_string(&self, v: &ReflectValueRef) -> String {
+        match v {
+            ReflectValueRef::U32(u32) => u32.to_string(),
+            ReflectValueRef::U64(u64) => u64.to_string(),
+            ReflectValueRef::I32(i32) => i32.to_string(),
+            ReflectValueRef::I64(i64) => i64.to_string(),
+            ReflectValueRef::F32(f32) => f32.to_string(),
+            ReflectValueRef::F64(f64) => f64.to_string(),
+            ReflectValueRef::Bool(bool) => bool.to_string(),
+            ReflectValueRef::String(s) => s.to_string(),
+            ReflectValueRef::Message(m) => m.to_string(),
+            ReflectValueRef::Enum(e, i) => e.value_by_number(*i).unwrap().full_name(),
+            ReflectValueRef::Bytes(b) => format!("{:?}", b),
+        }
+    }
+
     pub fn load_message(
         &mut self,
         message: &dyn MessageDyn,
@@ -210,35 +300,32 @@ impl TaggedFieldContent {
             .for_each(|field| match field.runtime_field_type() {
                 protobuf::reflect::RuntimeFieldType::Singular(_) => {
                     if let Some(v) = field.get_singular(message) {
-                        match v {
-                            protobuf::reflect::ReflectValueRef::Message(m) => {
-                                self.load_message(m.deref(), filter, data_source);
+                        if let protobuf::reflect::ReflectValueRef::Message(m) = v {
+                            self.load_message(m.deref(), filter, data_source);
+                        } else {
+                            if !filter.filter_field(&field) {
+                                return;
                             }
-                            protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field(&field) {
-                                    return;
-                                }
 
-                                if !filter.filter_value(s) {
-                                    return;
-                                }
-
-                                let value = v.to_string();
-                                if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
-                                }
+                            let s = self.pb_value_to_string(&v);
+                            if !filter.filter_value(&s) {
+                                return;
                             }
-                            _ => {}
+
+                            let value = v.to_string();
+                            if let Some(item) = self.body.get_mut(&value) {
+                                item.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                            } else {
+                                let mut ls = LinkedList::new();
+                                ls.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                                self.body.insert(value, ls);
+                            }
                         }
                     }
                 }
@@ -247,99 +334,95 @@ impl TaggedFieldContent {
                         return;
                     }
 
-                    field
-                        .get_repeated(message)
-                        .into_iter()
-                        .for_each(|v| match v {
-                            protobuf::reflect::ReflectValueRef::Message(m) => {
-                                self.load_message(m.deref(), filter, data_source);
+                    field.get_repeated(message).into_iter().for_each(|v| {
+                        if let protobuf::reflect::ReflectValueRef::Message(m) = v {
+                            self.load_message(m.deref(), filter, data_source);
+                        } else {
+                            if !filter.filter_field(&field) {
+                                return;
                             }
-                            protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_value(s) {
-                                    return;
-                                }
 
-                                let value = v.to_string();
-                                if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
-                                }
+                            let s = self.pb_value_to_string(&v);
+                            if !filter.filter_value(&s) {
+                                return;
                             }
-                            _ => {}
-                        })
+
+                            let value = v.to_string();
+                            if let Some(item) = self.body.get_mut(&value) {
+                                item.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                            } else {
+                                let mut ls = LinkedList::new();
+                                ls.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                                self.body.insert(value, ls);
+                            }
+                        }
+                    });
                 }
                 protobuf::reflect::RuntimeFieldType::Map(_, _) => {
                     field.get_map(message).into_iter().for_each(|(k, v)| {
-                        match k {
-                            protobuf::reflect::ReflectValueRef::Message(m) => {
-                                self.load_message(m.deref(), filter, data_source);
+                        if let protobuf::reflect::ReflectValueRef::Message(m) = k {
+                            self.load_message(m.deref(), filter, data_source);
+                        } else {
+                            if !filter.filter_field(&field) {
+                                return;
                             }
-                            protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field(&field) {
-                                    return;
-                                }
 
-                                if !filter.filter_value(s) {
-                                    return;
-                                }
+                            let s = self.pb_value_to_string(&k);
 
-                                let value = v.to_string();
-                                if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
-                                }
+                            if !filter.filter_value(&s) {
+                                return;
                             }
-                            _ => {}
-                        }
 
-                        match v {
-                            protobuf::reflect::ReflectValueRef::Message(m) => {
-                                self.load_message(m.deref(), filter, data_source);
+                            let value = v.to_string();
+                            if let Some(item) = self.body.get_mut(&value) {
+                                item.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                            } else {
+                                let mut ls = LinkedList::new();
+                                ls.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                                self.body.insert(value, ls);
                             }
-                            protobuf::reflect::ReflectValueRef::String(s) => {
-                                if !filter.filter_field(&field) {
-                                    return;
-                                }
+                        };
 
-                                if !filter.filter_value(s) {
-                                    return;
-                                }
-
-                                let value = v.to_string();
-                                if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(TaggedFieldItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
-                                }
+                        if let protobuf::reflect::ReflectValueRef::Message(m) = v {
+                            self.load_message(m.deref(), filter, data_source);
+                        } else {
+                            if !filter.filter_field(&field) {
+                                return;
                             }
-                            _ => {}
-                        }
+
+                            let s = self.pb_value_to_string(&v);
+
+                            if !filter.filter_value(&s) {
+                                return;
+                            }
+
+                            let value = v.to_string();
+                            if let Some(item) = self.body.get_mut(&value) {
+                                item.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                            } else {
+                                let mut ls = LinkedList::new();
+                                ls.push_back(TaggedFieldItemSource {
+                                    file: data_source.file.clone(),
+                                    sheet: data_source.sheet.clone(),
+                                });
+                                self.body.insert(value, ls);
+                            }
+                        };
                     });
                 }
             });
@@ -405,11 +488,17 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
 
     for tag in &args.tagged_field_tags {
         if !tag.is_empty() {
-            ret.select_tags.insert(tag.to_string());
+            ret.select_field_tags.insert(tag.to_string());
         }
     }
 
-    for regex_rule in &args.tagged_field_include_value_regex_rule {
+    for tag in &args.tagged_oneof_tags {
+        if !tag.is_empty() {
+            ret.select_oneof_tags.insert(tag.to_string());
+        }
+    }
+
+    for regex_rule in &args.tagged_data_include_value_regex_rule {
         match regex::Regex::new(regex_rule) {
             Ok(r) => {
                 ret.value_include_regex_rules.push(r);
@@ -424,7 +513,7 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
         }
     }
 
-    for file_path in &args.tagged_field_include_value_regex_file {
+    for file_path in &args.tagged_data_include_value_regex_file {
         utility::load_file_by_lines(file_path, "regex rule", &mut has_error, |line| {
             match regex::Regex::new(line) {
                 Ok(r) => {
@@ -436,7 +525,7 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
         });
     }
 
-    for regex_rule in &args.tagged_field_exclude_value_regex_rule {
+    for regex_rule in &args.tagged_data_exclude_value_regex_rule {
         match regex::Regex::new(regex_rule) {
             Ok(r) => {
                 ret.value_exclude_regex_rules.push(r);
@@ -451,7 +540,7 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
         }
     }
 
-    for file_path in &args.tagged_field_exclude_value_regex_file {
+    for file_path in &args.tagged_data_exclude_value_regex_file {
         utility::load_file_by_lines(file_path, "regex rule", &mut has_error, |line| {
             match regex::Regex::new(line) {
                 Ok(r) => {
@@ -463,28 +552,28 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
         });
     }
 
-    for field_path_file in &args.tagged_field_include_field_path_file {
+    for field_path_file in &args.tagged_data_include_field_path_file {
         utility::load_file_by_lines(field_path_file, "field path", &mut has_error, |line| {
             ret.include_field_paths.insert(line.to_string());
             Ok(())
         });
     }
 
-    for field_path_file in &args.tagged_field_exclude_field_path_file {
+    for field_path_file in &args.tagged_data_exclude_field_path_file {
         utility::load_file_by_lines(field_path_file, "field path", &mut has_error, |line| {
             ret.exclude_field_paths.insert(line.to_string());
             Ok(())
         });
     }
 
-    for field_path_file in &args.tagged_field_include_message_path_file {
+    for field_path_file in &args.tagged_data_include_message_path_file {
         utility::load_file_by_lines(field_path_file, "message path", &mut has_error, |line| {
             ret.include_message_paths.insert(line.to_string());
             Ok(())
         });
     }
 
-    for field_path_file in &args.tagged_field_exclude_message_path_file {
+    for field_path_file in &args.tagged_data_exclude_message_path_file {
         utility::load_file_by_lines(field_path_file, "message path", &mut has_error, |line| {
             ret.exclude_message_paths.insert(line.to_string());
             Ok(())

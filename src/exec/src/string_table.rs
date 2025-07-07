@@ -90,6 +90,10 @@ impl StringTableBinarySource {
 
 impl StringTableFilter {
     pub fn filter_value(&self, input: &str) -> bool {
+        if input.trim().is_empty() {
+            return false;
+        }
+
         if !self.value_include_regex_rules.is_empty() {
             let mut matched = false;
             for rule in &self.value_include_regex_rules {
@@ -211,6 +215,10 @@ impl StringTableContent {
                                 self.load_message(m.deref(), filter, data_source);
                             }
                             protobuf::reflect::ReflectValueRef::String(s) => {
+                                if !filter.filter_field(&field) {
+                                    return;
+                                }
+
                                 if !filter.filter_value(s) {
                                     return;
                                 }

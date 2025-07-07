@@ -1,0 +1,50 @@
+{
+  // 使用 IntelliSense 了解相关属性。
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Cargo launch",
+      "cargo": {
+        "args": ["build", "--lib"]
+      },
+      "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'xresloader-dump-bin'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=xresloader-dump-bin",
+          "--package=xresloader-dump-bin"
+        ],
+        "filter": {
+          "name": "xresloader-dump-bin",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "-p",
+        "../../xresloader/sample/proto_v3/kind.pb",
+        "-b",
+        "../../xresloader/sample/proto_v3/event_cfg.bin",
+        "--tagged-field-tags",
+        "server_only",
+        "--tagged-oneof-tags",
+        "server_only",
+        "--output-tagged-data-json",
+        "tagged-data.json",
+        "--output-tagged-data-text",
+        "tagged-data.txt",
+        "--silence",
+        "--tagged-data-pretty"
+      ],
+      "cwd": "${workspaceFolder}/target"
+    }
+  ]
+}

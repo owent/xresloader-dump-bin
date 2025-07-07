@@ -93,7 +93,7 @@ pub struct DumpOptions {
         default_value = "",
         value_name = "OUTPUT JSON FILE PATH"
     )]
-    pub output_tagged_field_json: String,
+    pub output_tagged_data_json: String,
 
     /// Output tagged field as text lines
     #[arg(
@@ -102,45 +102,49 @@ pub struct DumpOptions {
         default_value = "",
         value_name = "OUTPUT TEXT FILE PATH"
     )]
-    pub output_tagged_field_text: String,
+    pub output_tagged_data_text: String,
 
     /// Field tags(can be used mulpitle times)
     #[arg(short, long, value_parser, action = ArgAction::Append, value_name = "FIELD TAGS")]
     pub tagged_field_tags: Vec<String>,
 
+    /// Oneof tags(can be used mulpitle times)
+    #[arg(long, value_parser, action = ArgAction::Append, value_name = "ONEOF TAGS")]
+    pub tagged_oneof_tags: Vec<String>,
+
     /// Field value include matching rule for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "REGEX")]
-    pub tagged_field_include_value_regex_rule: Vec<String>,
+    pub tagged_data_include_value_regex_rule: Vec<String>,
 
     /// Load field value include matching rule(regex) from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "REGEX")]
-    pub tagged_field_include_value_regex_file: Vec<String>,
+    pub tagged_data_include_value_regex_file: Vec<String>,
 
     /// Field value exclude matching rule for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "REGEX FILE PATH")]
-    pub tagged_field_exclude_value_regex_rule: Vec<String>,
+    pub tagged_data_exclude_value_regex_rule: Vec<String>,
 
     /// Load field value exclude matching rule(regex) from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "REGEX FILE PATH")]
-    pub tagged_field_exclude_value_regex_file: Vec<String>,
+    pub tagged_data_exclude_value_regex_file: Vec<String>,
 
     /// Load field include path from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "FILE PATH")]
-    pub tagged_field_include_field_path_file: Vec<String>,
+    pub tagged_data_include_field_path_file: Vec<String>,
 
     /// Load field exclude path from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "FILE PATH")]
-    pub tagged_field_exclude_field_path_file: Vec<String>,
+    pub tagged_data_exclude_field_path_file: Vec<String>,
 
     /// Load message exclude path from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "FILE PATH")]
-    pub tagged_field_exclude_message_path_file: Vec<String>,
+    pub tagged_data_exclude_message_path_file: Vec<String>,
 
     /// Load message include path from file for string table(can be used mulpitle times)
     #[arg(long, value_parser, action = ArgAction::Append, value_name = "FILE PATH")]
-    pub tagged_field_include_message_path_file: Vec<String>,
+    pub tagged_data_include_message_path_file: Vec<String>,
 
-    /// String table pretty mode
+    /// Tagged data pretty mode
     #[arg(long, value_parser, default_value = "false")]
-    pub tagged_field_pretty: bool,
+    pub tagged_data_pretty: bool,
 }
