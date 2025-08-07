@@ -86,7 +86,7 @@ jobs:
         shell: bash
         run: |
           rustup target add --toolchain ${{ matrix.rust }} ${{ matrix.target }}
-          rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
+          # rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
       - name: Cargo build
         shell: bash
         run: |
@@ -177,7 +177,7 @@ jobs:
         shell: bash
         run: |
           rustup target add --toolchain ${{ matrix.rust }} ${{ matrix.target }}
-          rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
+          # rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
       - name: Cargo Release build
         uses: actions-rs/cargo@v1
         with:
@@ -229,7 +229,7 @@ jobs:
         shell: bash
         run: |
           rustup target add --toolchain ${{ matrix.rust }} ${{ matrix.target }}
-          rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
+          # rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
       - name: Cargo Release build
         uses: actions-rs/cargo@v1
         if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
