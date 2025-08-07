@@ -1,91 +1,42 @@
-use std::collections::{HashMap, HashSet, LinkedList};
-use std::fs::File;
-use std::io::Write;
+use std::any::Any;
+use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
+use std::rc::Rc;
 
 use super::dump_options::DumpOptions;
+use super::dump_plugin;
 use super::utility;
 
 use protobuf::MessageDyn;
-use xresloader_protocol::proto::pb_header_v3::{Xresloader_data_source, Xresloader_datablocks};
 
-#[derive(Clone)]
-pub struct StringTableDataSource {
-    pub file: ::std::string::String,
-    pub sheet: ::std::string::String,
-    pub count: i32,
+struct StringTableContent {
+    pub head: Rc<dump_plugin::DumpPluginBlockDataSource>,
+    pub body: HashMap<String, HashSet<dump_plugin::DumpPluginItemDataSource>>,
 }
 
-pub struct StringTableBinarySource {
-    pub xres_ver: ::std::string::String,
-    pub data_ver: ::std::string::String,
-    pub bin_file: ::std::string::String,
-    pub count: u32,
-    pub hash_code: ::std::string::String,
-    pub description: ::std::string::String,
-    pub data_source: ::std::vec::Vec<StringTableDataSource>,
-}
+impl dump_plugin::DumpPluginBlockInterface for StringTableContent {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 
-pub struct StringTableItemSource {
-    pub file: ::std::string::String,
-    pub sheet: ::std::string::String,
-}
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 
-pub struct StringTableContent {
-    pub head: StringTableBinarySource,
-    pub body: HashMap<String, LinkedList<StringTableItemSource>>,
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 #[derive(Default)]
-pub struct StringTableFilter {
+struct StringTableFilter {
     pub value_include_regex_rules: Vec<regex::Regex>,
     pub value_exclude_regex_rules: Vec<regex::Regex>,
     pub include_message_paths: HashSet<String>,
     pub exclude_message_paths: HashSet<String>,
     pub include_field_paths: HashSet<String>,
     pub exclude_field_paths: HashSet<String>,
-}
-
-impl StringTableDataSource {
-    pub fn default() -> Self {
-        StringTableDataSource {
-            file: String::from("[UNKNOWN]"),
-            sheet: String::from("[UNKNOWN]"),
-            count: 0,
-        }
-    }
-
-    pub fn new(data_source: &Xresloader_data_source) -> Self {
-        StringTableDataSource {
-            file: data_source.file.clone(),
-            sheet: data_source.sheet.clone(),
-            count: data_source.count,
-        }
-    }
-}
-
-impl StringTableBinarySource {
-    pub fn new(data_blocks: &Xresloader_datablocks, bin_file: String) -> Self {
-        StringTableBinarySource {
-            xres_ver: data_blocks.header.xres_ver.clone(),
-            data_ver: data_blocks.header.data_ver.clone(),
-            bin_file,
-            count: data_blocks.header.count,
-            hash_code: data_blocks.header.hash_code.clone(),
-            description: data_blocks.header.description.clone(),
-            data_source: {
-                let mut data_source = Vec::new();
-                for source in &data_blocks.header.data_source {
-                    data_source.push(StringTableDataSource {
-                        file: source.file.clone(),
-                        sheet: source.sheet.clone(),
-                        count: source.count,
-                    });
-                }
-                data_source
-            },
-        }
-    }
 }
 
 impl StringTableFilter {
@@ -158,7 +109,7 @@ impl StringTableContent {
         &mut self,
         message: &dyn MessageDyn,
         filter: &StringTableFilter,
-        data_source: &StringTableDataSource,
+        data_source: &dump_plugin::DumpPluginSheetDataSource,
     ) {
         if !filter.filter_message(&message.descriptor_dyn()) {
             return;
@@ -185,17 +136,14 @@ impl StringTableContent {
 
                                 let value = v.to_string();
                                 if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
+                                    let item_ds = &data_source.item;
+                                    if !item.contains(item_ds) {
+                                        item.insert(item_ds.as_ref().clone());
+                                    }
                                 } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
+                                    let mut hs = HashSet::new();
+                                    hs.insert(data_source.item.as_ref().clone());
+                                    self.body.insert(value, hs);
                                 }
                             }
                             _ => {}
@@ -225,17 +173,14 @@ impl StringTableContent {
 
                                 let value = v.to_string();
                                 if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
+                                    let item_ds = &data_source.item;
+                                    if !item.contains(item_ds) {
+                                        item.insert(item_ds.as_ref().clone());
+                                    }
                                 } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
+                                    let mut hs = HashSet::new();
+                                    hs.insert(data_source.item.as_ref().clone());
+                                    self.body.insert(value, hs);
                                 }
                             }
                             _ => {}
@@ -258,17 +203,14 @@ impl StringTableContent {
 
                                 let value = v.to_string();
                                 if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
+                                    let item_ds = &data_source.item;
+                                    if !item.contains(item_ds) {
+                                        item.insert(item_ds.as_ref().clone());
+                                    }
                                 } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
+                                    let mut hs = HashSet::new();
+                                    hs.insert(data_source.item.as_ref().clone());
+                                    self.body.insert(value, hs);
                                 }
                             }
                             _ => {}
@@ -289,17 +231,14 @@ impl StringTableContent {
 
                                 let value = v.to_string();
                                 if let Some(item) = self.body.get_mut(&value) {
-                                    item.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
+                                    let item_ds = &data_source.item;
+                                    if !item.contains(item_ds) {
+                                        item.insert(item_ds.as_ref().clone());
+                                    }
                                 } else {
-                                    let mut ls = LinkedList::new();
-                                    ls.push_back(StringTableItemSource {
-                                        file: data_source.file.clone(),
-                                        sheet: data_source.sheet.clone(),
-                                    });
-                                    self.body.insert(value, ls);
+                                    let mut hs = HashSet::new();
+                                    hs.insert(data_source.item.as_ref().clone());
+                                    self.body.insert(value, hs);
                                 }
                             }
                             _ => {}
@@ -309,47 +248,59 @@ impl StringTableContent {
             });
     }
 
-    pub fn to_json(&self) -> json::JsonValue {
+    pub fn to_json(
+        &self,
+        json_item_head: json::JsonValue,
+        output_ordered: bool,
+    ) -> json::JsonValue {
         let mut json_item = json::JsonValue::new_object();
-        let mut json_item_head = json::JsonValue::new_object();
-        let mut json_item_body = json::JsonValue::new_object();
+        let _ = json_item.insert("head", json_item_head);
 
-        let _ = json_item_head.insert("xres_ver", self.head.xres_ver.clone());
-        let _ = json_item_head.insert("data_ver", self.head.data_ver.clone());
-        let _ = json_item_head.insert("bin_file", self.head.bin_file.clone());
-        let _ = json_item_head.insert("count", self.head.count);
-        let _ = json_item_head.insert("hash_code", self.head.hash_code.clone());
-        let _ = json_item_head.insert("description", self.head.description.clone());
-        let _ = json_item_head.insert("data_source", {
-            let mut ds = json::JsonValue::new_array();
-            for source in &self.head.data_source {
-                let mut d = json::JsonValue::new_object();
-                let _ = d.insert("file", source.file.clone());
-                let _ = d.insert("sheet", source.sheet.clone());
-                if source.count > 0 {
-                    let _ = d.insert("count", source.count);
+        if output_ordered {
+            let mut json_item_body = json::JsonValue::new_array();
+
+            utility::for_each_ordered_hash_map(&self.body, |key, value| {
+                let mut body_item = json::JsonValue::new_object();
+                let mut body_item_source = json::JsonValue::new_array();
+                utility::for_each_ordered_hash_set_by(
+                    value,
+                    |a, b| {
+                        if a.file == b.file {
+                            a.sheet.cmp(&b.sheet)
+                        } else {
+                            a.file.cmp(&b.file)
+                        }
+                    },
+                    |source| {
+                        let mut d = json::JsonValue::new_object();
+                        let _ = d.insert("file", source.file.clone());
+                        let _ = d.insert("sheet", source.sheet.clone());
+                        let _ = body_item_source.push(d);
+                    },
+                );
+                let _ = body_item.insert("source", body_item_source);
+                let mut json_item_body_data = json::JsonValue::new_object();
+                let _ = json_item_body_data.insert(key, body_item);
+                let _ = json_item_body.push(json_item_body_data);
+            });
+            let _ = json_item.insert("body", json_item_body);
+        } else {
+            let mut json_item_body = json::JsonValue::new_object();
+            for (key, value) in &self.body {
+                let mut body_item = json::JsonValue::new_object();
+                let mut body_item_source = json::JsonValue::new_array();
+                for source in value {
+                    let mut d = json::JsonValue::new_object();
+                    let _ = d.insert("file", source.file.clone());
+                    let _ = d.insert("sheet", source.sheet.clone());
+                    let _ = body_item_source.push(d);
                 }
-                let _ = ds.push(d);
+                let _ = body_item.insert("source", body_item_source);
+                let _ = json_item_body.insert(key, body_item);
             }
-
-            ds
-        });
-
-        for row in &self.body {
-            let mut body_item = json::JsonValue::new_object();
-            let mut body_item_source = json::JsonValue::new_array();
-            for source in row.1 {
-                let mut d = json::JsonValue::new_object();
-                let _ = d.insert("file", source.file.clone());
-                let _ = d.insert("sheet", source.sheet.clone());
-                let _ = body_item_source.push(d);
-            }
-            let _ = body_item.insert("source", body_item_source);
-            let _ = json_item_body.insert(row.0, body_item);
+            let _ = json_item.insert("body", json_item_body);
         }
 
-        let _ = json_item.insert("head", json_item_head);
-        let _ = json_item.insert("body", json_item_body);
         json_item
     }
 
@@ -363,7 +314,7 @@ impl StringTableContent {
     }
 }
 
-pub fn build_string_table_filter(args: &DumpOptions) -> (StringTableFilter, bool) {
+fn build_string_table_filter(args: &DumpOptions) -> (StringTableFilter, bool) {
     let mut ret: StringTableFilter = StringTableFilter::default();
     let mut has_error = false;
 
@@ -452,75 +403,119 @@ pub fn build_string_table_filter(args: &DumpOptions) -> (StringTableFilter, bool
     (ret, has_error)
 }
 
-pub fn dump_string_table_to_text_file(
-    string_tables: &Vec<StringTableContent>,
-    output_file: &String,
-) -> Result<(), ()> {
-    let mut has_error = false;
-    match File::create(&output_file) {
-        Ok(mut f) => {
-            let mut text: HashSet<String> = HashSet::new();
-            for string_table in string_tables {
-                text.extend(string_table.to_text());
-            }
+pub struct DumpPluginStringTable {
+    filter: StringTableFilter,
+    content: VecDeque<Box<StringTableContent>>,
 
-            for line in text {
-                let _ = f.write(line.as_bytes());
-                let _ = f.write(b"\n");
-            }
-        }
-        Err(e) => {
-            error!(
-                "Try to open {} to write string table failed, {}",
-                output_file, e
-            );
-            has_error = true;
-        }
-    }
+    // output
+    output_pretty: bool,
+    output_ordered: bool,
+    write_to_text_file: String,
+    write_to_json_file: String,
+}
 
-    if has_error {
-        Err(())
-    } else {
-        Ok(())
+impl DumpPluginStringTable {
+    pub fn build(args: &DumpOptions) -> (Option<Box<dyn dump_plugin::DumpPluginInterface>>, bool) {
+        if args.output_string_table_json.is_empty() && args.output_string_table_text.is_empty() {
+            return (None, false);
+        }
+
+        let (string_table_filter, has_string_table_error) = build_string_table_filter(&args);
+        if has_string_table_error {
+            return (None, has_string_table_error);
+        }
+
+        (
+            Some(Box::new(DumpPluginStringTable {
+                filter: string_table_filter,
+                content: VecDeque::new(),
+                output_pretty: args.pretty || args.string_table_pretty,
+                output_ordered: args.string_table_ordered,
+                write_to_text_file: args.output_string_table_text.clone(),
+                write_to_json_file: args.output_string_table_json.clone(),
+            })),
+            false,
+        )
     }
 }
 
-pub fn dump_string_table_to_json_file(
-    string_tables: &Vec<StringTableContent>,
-    output_file: &String,
-    pretty: bool,
-) -> Result<(), ()> {
-    let mut has_error = false;
+impl dump_plugin::DumpPluginInterface for DumpPluginStringTable {
+    fn create_block(
+        &self,
+        data_source: Rc<dump_plugin::DumpPluginBlockDataSource>,
+    ) -> Option<Box<dyn dump_plugin::DumpPluginBlockInterface>> {
+        Some(Box::new(StringTableContent {
+            head: data_source,
+            body: HashMap::new(),
+        }))
+    }
 
-    match File::create(&output_file) {
-        Ok(mut f) => {
-            let mut json = json::JsonValue::new_array();
-            for string_table in string_tables {
-                let _ = json.push(string_table.to_json());
-            }
-
-            if pretty {
-                if let Err(e) = f.write_all(json::stringify_pretty(json, 2).as_bytes()) {
-                    error!("Try to write string table to {} failed, {}", output_file, e);
-                    has_error = true;
-                }
-            } else if let Err(e) = f.write_all(json::stringify(json).as_bytes()) {
-                error!("Try to write string table to {} failed, {}", output_file, e);
-                has_error = true;
-            }
-        }
-        Err(e) => {
+    fn load_message(
+        &mut self,
+        block: &mut Box<dyn dump_plugin::DumpPluginBlockInterface>,
+        message: &dyn MessageDyn,
+        data_source: &dump_plugin::DumpPluginSheetDataSource,
+    ) {
+        if let Some(rb) = block.as_any_mut().downcast_mut::<StringTableContent>() {
+            rb.load_message(message, &mut self.filter, &data_source);
+        } else {
             error!(
-                "Try to open {} to write string table failed, {}",
-                output_file, e
+                "In DumpPluginStringTable::load_message, the block is not StringTableContent, ignore this message"
             );
-            has_error = true;
+            return;
         }
     }
 
-    if has_error {
-        Err(())
-    } else {
-        Ok(())
+    fn push_block(&mut self, block: Box<dyn dump_plugin::DumpPluginBlockInterface>) {
+        if let Ok(rb) = block.into_any().downcast::<StringTableContent>() {
+            self.content.push_back(rb);
+        } else {
+            error!(
+                "In DumpPluginStringTable::push_block, the block is not StringTableContent, ignore this message"
+            );
+            return;
+        }
+    }
+
+    fn to_json(&self) -> Vec<json::JsonValue> {
+        let mut ret = Vec::with_capacity(self.content.len());
+        for tagged_field in &self.content {
+            ret.push(tagged_field.to_json(
+                self.header_to_json(tagged_field.head.as_ref()),
+                self.output_ordered,
+            ));
+        }
+        ret
+    }
+
+    fn to_text(&self) -> Vec<String> {
+        let mut text: HashSet<String> = HashSet::new();
+        for tagged_field in &self.content {
+            text.extend(tagged_field.to_text());
+        }
+
+        let mut ret = Vec::with_capacity(text.len());
+        ret.extend(text.iter().cloned());
+        if self.output_ordered {
+            ret.sort();
+        }
+        ret
+    }
+
+    fn flush(&self) -> dump_plugin::DumpPluginFlushResult {
+        let mut ret = Ok(());
+        if !self.write_to_text_file.is_empty() {
+            if let Err(e) = self.dump_to_text_file(&self.write_to_text_file) {
+                ret = Err(e);
+            }
+        }
+
+        if !self.write_to_json_file.is_empty() {
+            if let Err(e) = self.dump_to_json_file(&self.write_to_json_file, self.output_pretty) {
+                ret = Err(e);
+            }
+        }
+
+        ret
     }
 }

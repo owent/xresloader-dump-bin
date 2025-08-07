@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::boxed::Box;
 use std::collections::VecDeque;
-use std::collections::{HashMap, HashSet, LinkedList};
+use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -15,7 +15,7 @@ use protobuf::{Message, MessageDyn};
 
 struct TaggedFieldContent {
     pub head: Rc<dump_plugin::DumpPluginBlockDataSource>,
-    pub body: HashMap<String, LinkedList<Rc<dump_plugin::TaggedFieldItemDataSource>>>,
+    pub body: HashMap<String, HashSet<dump_plugin::DumpPluginItemDataSource>>,
 }
 
 impl dump_plugin::DumpPluginBlockInterface for TaggedFieldContent {
@@ -270,11 +270,14 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(data_source.into());
+                                let item_ds = &data_source.item;
+                                if !item.contains(item_ds) {
+                                    item.insert(item_ds.as_ref().clone());
+                                }
                             } else {
-                                let mut ls = LinkedList::new();
-                                ls.push_back(data_source.into());
-                                self.body.insert(value, ls);
+                                let mut hs = HashSet::new();
+                                hs.insert(data_source.item.as_ref().clone());
+                                self.body.insert(value, hs);
                             }
                         }
                     }
@@ -299,11 +302,14 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(data_source.into());
+                                let item_ds = &data_source.item;
+                                if !item.contains(item_ds) {
+                                    item.insert(item_ds.as_ref().clone());
+                                }
                             } else {
-                                let mut ls = LinkedList::new();
-                                ls.push_back(data_source.into());
-                                self.body.insert(value, ls);
+                                let mut hs = HashSet::new();
+                                hs.insert(data_source.item.as_ref().clone());
+                                self.body.insert(value, hs);
                             }
                         }
                     });
@@ -325,11 +331,14 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(data_source.into());
+                                let item_ds = &data_source.item;
+                                if !item.contains(item_ds) {
+                                    item.insert(item_ds.as_ref().clone());
+                                }
                             } else {
-                                let mut ls = LinkedList::new();
-                                ls.push_back(data_source.into());
-                                self.body.insert(value, ls);
+                                let mut hs = HashSet::new();
+                                hs.insert(data_source.item.as_ref().clone());
+                                self.body.insert(value, hs);
                             }
                         };
 
@@ -348,11 +357,14 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(data_source.into());
+                                let item_ds = &data_source.item;
+                                if !item.contains(item_ds) {
+                                    item.insert(item_ds.as_ref().clone());
+                                }
                             } else {
-                                let mut ls = LinkedList::new();
-                                ls.push_back(data_source.into());
-                                self.body.insert(value, ls);
+                                let mut hs = HashSet::new();
+                                hs.insert(data_source.item.as_ref().clone());
+                                self.body.insert(value, hs);
                             }
                         };
                     });
@@ -363,18 +375,18 @@ impl TaggedFieldContent {
     pub fn to_json(
         &self,
         json_item_head: json::JsonValue,
-        ordered_output: bool,
+        output_ordered: bool,
     ) -> json::JsonValue {
         let mut json_item = json::JsonValue::new_object();
         let _ = json_item.insert("head", json_item_head);
 
-        if ordered_output {
+        if output_ordered {
             let mut json_item_body = json::JsonValue::new_array();
 
             utility::for_each_ordered_hash_map(&self.body, |key, value| {
                 let mut body_item = json::JsonValue::new_object();
                 let mut body_item_source = json::JsonValue::new_array();
-                utility::for_each_ordered_linked_list_by(
+                utility::for_each_ordered_hash_set_by(
                     value,
                     |a, b| {
                         if a.file == b.file {
@@ -532,7 +544,8 @@ pub struct DumpPluginTaggedField {
     content: VecDeque<Box<TaggedFieldContent>>,
 
     // output
-    ordered_output: bool,
+    output_pretty: bool,
+    output_ordered: bool,
     write_to_text_file: String,
     write_to_json_file: String,
 }
@@ -552,7 +565,8 @@ impl DumpPluginTaggedField {
             Some(Box::new(DumpPluginTaggedField {
                 filter: tagged_field_filter,
                 content: VecDeque::new(),
-                ordered_output: args.tagged_data_ordered,
+                output_pretty: args.pretty || args.tagged_data_pretty,
+                output_ordered: args.tagged_data_ordered,
                 write_to_text_file: args.output_tagged_data_text.clone(),
                 write_to_json_file: args.output_tagged_data_json.clone(),
             })),
@@ -604,7 +618,7 @@ impl dump_plugin::DumpPluginInterface for DumpPluginTaggedField {
         for tagged_field in &self.content {
             ret.push(tagged_field.to_json(
                 self.header_to_json(tagged_field.head.as_ref()),
-                self.ordered_output,
+                self.output_ordered,
             ));
         }
         ret
@@ -618,11 +632,13 @@ impl dump_plugin::DumpPluginInterface for DumpPluginTaggedField {
 
         let mut ret = Vec::with_capacity(text.len());
         ret.extend(text.iter().cloned());
-        ret.sort();
+        if self.output_ordered {
+            ret.sort();
+        }
         ret
     }
 
-    fn flush(&self, pretty: bool) -> dump_plugin::DumpPluginFlushResult {
+    fn flush(&self) -> dump_plugin::DumpPluginFlushResult {
         let mut ret = Ok(());
         if !self.write_to_text_file.is_empty() {
             if let Err(e) = self.dump_to_text_file(&self.write_to_text_file) {
@@ -631,7 +647,7 @@ impl dump_plugin::DumpPluginInterface for DumpPluginTaggedField {
         }
 
         if !self.write_to_json_file.is_empty() {
-            if let Err(e) = self.dump_to_json_file(&self.write_to_json_file, pretty) {
+            if let Err(e) = self.dump_to_json_file(&self.write_to_json_file, self.output_pretty) {
                 ret = Err(e);
             }
         }

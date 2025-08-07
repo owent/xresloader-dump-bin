@@ -10,14 +10,15 @@ use xresloader_protocol::proto::pb_header_v3::{Xresloader_data_source, Xresloade
 
 use super::utility;
 
-pub struct TaggedFieldItemDataSource {
+#[derive(Clone, Hash, PartialEq, Eq)]
+pub struct DumpPluginItemDataSource {
     pub file: ::std::string::String,
     pub sheet: ::std::string::String,
 }
 
 #[derive(Clone)]
 pub struct DumpPluginSheetDataSource {
-    pub item: Rc<TaggedFieldItemDataSource>,
+    pub item: Rc<DumpPluginItemDataSource>,
     pub count: i32,
 }
 
@@ -34,7 +35,7 @@ pub struct DumpPluginBlockDataSource {
 impl DumpPluginSheetDataSource {
     pub fn default() -> Self {
         DumpPluginSheetDataSource {
-            item: Rc::new(TaggedFieldItemDataSource {
+            item: Rc::new(DumpPluginItemDataSource {
                 file: String::from("[UNKNOWN]"),
                 sheet: String::from("[UNKNOWN]"),
             }),
@@ -44,7 +45,7 @@ impl DumpPluginSheetDataSource {
 
     pub fn new(data_source: &Xresloader_data_source) -> Self {
         DumpPluginSheetDataSource {
-            item: Rc::new(TaggedFieldItemDataSource {
+            item: Rc::new(DumpPluginItemDataSource {
                 file: data_source.file.clone(),
                 sheet: data_source.sheet.clone(),
             }),
@@ -55,8 +56,8 @@ impl DumpPluginSheetDataSource {
 
 pub type DumpPluginFlushResult = Result<(), ()>;
 
-impl Into<Rc<TaggedFieldItemDataSource>> for &DumpPluginSheetDataSource {
-    fn into(self) -> Rc<TaggedFieldItemDataSource> {
+impl Into<Rc<DumpPluginItemDataSource>> for &DumpPluginSheetDataSource {
+    fn into(self) -> Rc<DumpPluginItemDataSource> {
         self.item.clone()
     }
 }
@@ -150,7 +151,7 @@ pub trait DumpPluginInterface {
 
     fn to_text(&self) -> Vec<String>;
 
-    fn flush(&self, pretty: bool) -> DumpPluginFlushResult;
+    fn flush(&self) -> DumpPluginFlushResult;
 
     fn dump_to_json_file(self: &Self, output_file: &String, pretty: bool) -> DumpPluginFlushResult {
         let mut has_error = false;
@@ -158,8 +159,8 @@ pub trait DumpPluginInterface {
         match File::create(&output_file) {
             Ok(mut f) => {
                 let mut json = json::JsonValue::new_array();
-                for tagged_field in self.to_json() {
-                    let _ = json.push(tagged_field);
+                for field in self.to_json() {
+                    let _ = json.push(field);
                 }
 
                 if pretty {

@@ -17,7 +17,6 @@ extern crate regex;
 
 use crate::clap::Parser;
 
-use std::collections::HashMap;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -42,7 +41,10 @@ fn build_dump_plugins(
     let mut ret = Vec::with_capacity(8);
     let mut has_error = false;
 
-    let new_plugin_fns = [tagged_field::DumpPluginTaggedField::build];
+    let new_plugin_fns = [
+        tagged_field::DumpPluginTaggedField::build,
+        string_table::DumpPluginStringTable::build,
+    ];
     for new_plugin_fn in &new_plugin_fns {
         let (new_plugin_inst, new_plugin_has_error) = new_plugin_fn(args);
         if let Some(p) = new_plugin_inst {
@@ -78,10 +80,6 @@ fn main() {
     }
 
     let mut desc_index = FileDescriptorIndex::new();
-
-    let mut string_tables: Vec<string_table::StringTableContent> = vec![];
-    let (string_table_filter, has_string_table_error) =
-        string_table::build_string_table_filter(&args);
 
     let (mut dump_plugins, dump_plugins_has_error) = build_dump_plugins(&args);
 
@@ -122,7 +120,7 @@ fn main() {
         }
     }
 
-    let mut has_error = has_string_table_error || dump_plugins_has_error;
+    let mut has_error = dump_plugins_has_error;
 
     for ref bin_file in args.bin_file {
         debug!("Load xresloader output binary file: {}", bin_file);
@@ -174,12 +172,6 @@ fn main() {
                             }
                         }
 
-                        let mut current_string_table_head : Option<string_table::StringTableBinarySource> = None;
-
-                        if !args.output_string_table_json.is_empty() || !args.output_string_table_text.is_empty() {
-                            current_string_table_head = Some(string_table::StringTableBinarySource::new(&data_blocks, bin_file.clone()));
-                        }
-
                         let dump_plugin_block_data_source= dump_plugin::DumpPluginBlockDataSource::new(&data_blocks, bin_file.clone());
 
                         if !args.silence {
@@ -189,16 +181,6 @@ fn main() {
                         if !args.plain && !args.head_only && !args.silence {
                             info!("[");
                         }
-
-                        let mut current_string_table :Option<string_table::StringTableContent> = None;
-                        if let Some(head) = current_string_table_head {
-                            current_string_table = Some(string_table::StringTableContent {
-                                head,
-                                body: HashMap::new(),
-                            });
-                        }
-                        let mut fallback_string_table_data_source =
-                            string_table::StringTableDataSource::default();
 
                         let mut current_dump_plugin_blocks = build_dump_plugin_blocks(&dump_plugins, &dump_plugin_block_data_source);
                         let mut fallback_dump_plugin_sheet_data_source =
@@ -210,7 +192,6 @@ fn main() {
                             row_index += 1;
                             if current_data_source_left_row <= 0 && current_data_source_idx < data_blocks.header.data_source.len() {
                                 current_data_source_left_row = data_blocks.header.data_source[current_data_source_idx].count;
-                                fallback_string_table_data_source = string_table::StringTableDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
                                 fallback_dump_plugin_sheet_data_source = dump_plugin::DumpPluginSheetDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
                                 current_data_source_idx += 1;
                             }
@@ -220,10 +201,6 @@ fn main() {
 
                             match message_descriptor.parse_from_bytes(row_data_block) {
                                 Ok(message) => {
-                                    if let Some(ref mut string_table) = current_string_table {
-                                        string_table.load_message(message.as_ref(), &string_table_filter, &fallback_string_table_data_source);
-                                    }
-
                                     for i in 0 .. dump_plugins.len() {
                                         if let Some(ref mut block) = current_dump_plugin_blocks[i] {
                                             dump_plugins[i].load_message(
@@ -271,12 +248,6 @@ fn main() {
                             info!("]");
                         }
 
-                        if let Some(string_table) = current_string_table {
-                            if !string_table.body.is_empty() {
-                                string_tables.push(string_table);
-                            }
-                        }
-
                         for i in 0 .. dump_plugins.len() {
                             if let Some(block) = current_dump_plugin_blocks[i].take() {
                                 dump_plugins[i].push_block(
@@ -301,30 +272,9 @@ fn main() {
         }
     }
 
-    // Dump string table json
-    if !args.output_string_table_json.is_empty() {
-        if let Err(_) = string_table::dump_string_table_to_json_file(
-            &string_tables,
-            &args.output_string_table_json,
-            args.pretty || args.string_table_pretty,
-        ) {
-            has_error = true;
-        }
-    }
-
-    // Dump string table text
-    if !args.output_string_table_text.is_empty() {
-        if let Err(_) = string_table::dump_string_table_to_text_file(
-            &string_tables,
-            &args.output_string_table_text,
-        ) {
-            has_error = true;
-        }
-    }
-
-    // Dump tagged data json
+    // Dump plugin datas
     for i in 0..dump_plugins.len() {
-        if let Err(_) = dump_plugins[i].flush(args.pretty || args.tagged_data_pretty) {
+        if let Err(_) = dump_plugins[i].flush() {
             has_error = true;
         }
     }

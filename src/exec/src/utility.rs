@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::collections::LinkedList;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
 
@@ -58,6 +58,24 @@ where
     }
 }
 
+#[allow(dead_code)]
+pub fn for_each_ordered_hash_set_by<T, F, C>(list: &HashSet<T>, mut compare: C, mut func: F)
+where
+    C: FnMut(&T, &T) -> std::cmp::Ordering,
+    F: FnMut(&T),
+{
+    let mut items = Vec::with_capacity(list.len());
+    list.iter().for_each(|item| {
+        items.push(item);
+    });
+    items.sort_by(|a, b| compare(a, b));
+
+    for item in items {
+        func(item);
+    }
+}
+
+#[allow(dead_code)]
 pub fn for_each_ordered_linked_list_by<T, F, C>(list: &LinkedList<T>, mut compare: C, mut func: F)
 where
     C: FnMut(&T, &T) -> std::cmp::Ordering,
