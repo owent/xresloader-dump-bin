@@ -1,47 +1,39 @@
+use std::any::Any;
+use std::boxed::Box;
+use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet, LinkedList};
-use std::fs::File;
-use std::io::Write;
 use std::ops::Deref;
+use std::rc::Rc;
 
 use super::dump_options::DumpOptions;
+use super::dump_plugin;
 use super::utility;
 
 use protobuf::reflect::ReflectValueRef;
 
 use protobuf::{Message, MessageDyn};
-use xresloader_protocol::proto::pb_header_v3::{Xresloader_data_source, Xresloader_datablocks};
-// use xresloader_protocol::proto::xresloader::exts::field_tag;
-// use xresloader_protocol::proto::xresloader::exts::oneof_tag;
 
-#[derive(Clone)]
-pub struct TaggedFieldDataSource {
-    pub file: ::std::string::String,
-    pub sheet: ::std::string::String,
-    pub count: i32,
+struct TaggedFieldContent {
+    pub head: Rc<dump_plugin::DumpPluginBlockDataSource>,
+    pub body: HashMap<String, LinkedList<Rc<dump_plugin::TaggedFieldItemDataSource>>>,
 }
 
-pub struct TaggedFieldBinarySource {
-    pub xres_ver: ::std::string::String,
-    pub data_ver: ::std::string::String,
-    pub bin_file: ::std::string::String,
-    pub count: u32,
-    pub hash_code: ::std::string::String,
-    pub description: ::std::string::String,
-    pub data_source: ::std::vec::Vec<TaggedFieldDataSource>,
-}
+impl dump_plugin::DumpPluginBlockInterface for TaggedFieldContent {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 
-pub struct TaggedFieldItemSource {
-    pub file: ::std::string::String,
-    pub sheet: ::std::string::String,
-}
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 
-pub struct TaggedFieldContent {
-    pub head: TaggedFieldBinarySource,
-    pub body: HashMap<String, LinkedList<TaggedFieldItemSource>>,
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 #[derive(Default)]
-pub struct TaggedFieldFilter {
+struct TaggedFieldFilter {
     blacklist_full_names: HashSet<String>,
     whitelist_full_names: HashSet<String>,
 
@@ -54,48 +46,6 @@ pub struct TaggedFieldFilter {
     pub exclude_message_paths: HashSet<String>,
     pub include_field_paths: HashSet<String>,
     pub exclude_field_paths: HashSet<String>,
-}
-
-impl TaggedFieldDataSource {
-    pub fn default() -> Self {
-        TaggedFieldDataSource {
-            file: String::from("[UNKNOWN]"),
-            sheet: String::from("[UNKNOWN]"),
-            count: 0,
-        }
-    }
-
-    pub fn new(data_source: &Xresloader_data_source) -> Self {
-        TaggedFieldDataSource {
-            file: data_source.file.clone(),
-            sheet: data_source.sheet.clone(),
-            count: data_source.count,
-        }
-    }
-}
-
-impl TaggedFieldBinarySource {
-    pub fn new(data_blocks: &Xresloader_datablocks, bin_file: String) -> Self {
-        TaggedFieldBinarySource {
-            xres_ver: data_blocks.header.xres_ver.clone(),
-            data_ver: data_blocks.header.data_ver.clone(),
-            bin_file,
-            count: data_blocks.header.count,
-            hash_code: data_blocks.header.hash_code.clone(),
-            description: data_blocks.header.description.clone(),
-            data_source: {
-                let mut data_source = Vec::new();
-                for source in &data_blocks.header.data_source {
-                    data_source.push(TaggedFieldDataSource {
-                        file: source.file.clone(),
-                        sheet: source.sheet.clone(),
-                        count: source.count,
-                    });
-                }
-                data_source
-            },
-        }
-    }
 }
 
 impl TaggedFieldFilter {
@@ -152,7 +102,10 @@ impl TaggedFieldFilter {
                             }
                         }
                         Err(e) => {
-                            error!("Failed to parse field tag {}(which should be org.xresloader.field_tag) as string, maybe corrupted data, {}", field_tag_number, e);
+                            error!(
+                                "Failed to parse field tag {}(which should be org.xresloader.field_tag) as string, maybe corrupted data, {}",
+                                field_tag_number, e
+                            );
                         }
                     }
                 }
@@ -190,7 +143,10 @@ impl TaggedFieldFilter {
                                     }
                                 }
                                 Err(e) => {
-                                    error!("Failed to parse field tag {}(which should be org.xresloader.oneof_tag) as string, maybe corrupted data, {}", field_oneof_number, e);
+                                    error!(
+                                        "Failed to parse field tag {}(which should be org.xresloader.oneof_tag) as string, maybe corrupted data, {}",
+                                        field_oneof_number, e
+                                    );
                                 }
                             }
                         }
@@ -288,7 +244,7 @@ impl TaggedFieldContent {
         &mut self,
         message: &dyn MessageDyn,
         filter: &mut TaggedFieldFilter,
-        data_source: &TaggedFieldDataSource,
+        data_source: &dump_plugin::DumpPluginSheetDataSource,
     ) {
         if !filter.filter_message(&message.descriptor_dyn()) {
             return;
@@ -314,16 +270,10 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                item.push_back(data_source.into());
                             } else {
                                 let mut ls = LinkedList::new();
-                                ls.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                ls.push_back(data_source.into());
                                 self.body.insert(value, ls);
                             }
                         }
@@ -349,16 +299,10 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                item.push_back(data_source.into());
                             } else {
                                 let mut ls = LinkedList::new();
-                                ls.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                ls.push_back(data_source.into());
                                 self.body.insert(value, ls);
                             }
                         }
@@ -381,16 +325,10 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                item.push_back(data_source.into());
                             } else {
                                 let mut ls = LinkedList::new();
-                                ls.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                ls.push_back(data_source.into());
                                 self.body.insert(value, ls);
                             }
                         };
@@ -410,16 +348,10 @@ impl TaggedFieldContent {
 
                             let value = v.to_string();
                             if let Some(item) = self.body.get_mut(&value) {
-                                item.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                item.push_back(data_source.into());
                             } else {
                                 let mut ls = LinkedList::new();
-                                ls.push_back(TaggedFieldItemSource {
-                                    file: data_source.file.clone(),
-                                    sheet: data_source.sheet.clone(),
-                                });
+                                ls.push_back(data_source.into());
                                 self.body.insert(value, ls);
                             }
                         };
@@ -428,47 +360,59 @@ impl TaggedFieldContent {
             });
     }
 
-    pub fn to_json(&self) -> json::JsonValue {
+    pub fn to_json(
+        &self,
+        json_item_head: json::JsonValue,
+        ordered_output: bool,
+    ) -> json::JsonValue {
         let mut json_item = json::JsonValue::new_object();
-        let mut json_item_head = json::JsonValue::new_object();
-        let mut json_item_body = json::JsonValue::new_object();
+        let _ = json_item.insert("head", json_item_head);
 
-        let _ = json_item_head.insert("xres_ver", self.head.xres_ver.clone());
-        let _ = json_item_head.insert("data_ver", self.head.data_ver.clone());
-        let _ = json_item_head.insert("bin_file", self.head.bin_file.clone());
-        let _ = json_item_head.insert("count", self.head.count);
-        let _ = json_item_head.insert("hash_code", self.head.hash_code.clone());
-        let _ = json_item_head.insert("description", self.head.description.clone());
-        let _ = json_item_head.insert("data_source", {
-            let mut ds = json::JsonValue::new_array();
-            for source in &self.head.data_source {
-                let mut d = json::JsonValue::new_object();
-                let _ = d.insert("file", source.file.clone());
-                let _ = d.insert("sheet", source.sheet.clone());
-                if source.count > 0 {
-                    let _ = d.insert("count", source.count);
+        if ordered_output {
+            let mut json_item_body = json::JsonValue::new_array();
+
+            utility::for_each_ordered_hash_map(&self.body, |key, value| {
+                let mut body_item = json::JsonValue::new_object();
+                let mut body_item_source = json::JsonValue::new_array();
+                utility::for_each_ordered_linked_list_by(
+                    value,
+                    |a, b| {
+                        if a.file == b.file {
+                            a.sheet.cmp(&b.sheet)
+                        } else {
+                            a.file.cmp(&b.file)
+                        }
+                    },
+                    |source| {
+                        let mut d = json::JsonValue::new_object();
+                        let _ = d.insert("file", source.file.clone());
+                        let _ = d.insert("sheet", source.sheet.clone());
+                        let _ = body_item_source.push(d);
+                    },
+                );
+                let _ = body_item.insert("source", body_item_source);
+                let mut json_item_body_data = json::JsonValue::new_object();
+                let _ = json_item_body_data.insert(key, body_item);
+                let _ = json_item_body.push(json_item_body_data);
+            });
+            let _ = json_item.insert("body", json_item_body);
+        } else {
+            let mut json_item_body = json::JsonValue::new_object();
+            for (key, value) in &self.body {
+                let mut body_item = json::JsonValue::new_object();
+                let mut body_item_source = json::JsonValue::new_array();
+                for source in value {
+                    let mut d = json::JsonValue::new_object();
+                    let _ = d.insert("file", source.file.clone());
+                    let _ = d.insert("sheet", source.sheet.clone());
+                    let _ = body_item_source.push(d);
                 }
-                let _ = ds.push(d);
+                let _ = body_item.insert("source", body_item_source);
+                let _ = json_item_body.insert(key, body_item);
             }
-
-            ds
-        });
-
-        for row in &self.body {
-            let mut body_item = json::JsonValue::new_object();
-            let mut body_item_source = json::JsonValue::new_array();
-            for source in row.1 {
-                let mut d = json::JsonValue::new_object();
-                let _ = d.insert("file", source.file.clone());
-                let _ = d.insert("sheet", source.sheet.clone());
-                let _ = body_item_source.push(d);
-            }
-            let _ = body_item.insert("source", body_item_source);
-            let _ = json_item_body.insert(row.0, body_item);
+            let _ = json_item.insert("body", json_item_body);
         }
 
-        let _ = json_item.insert("head", json_item_head);
-        let _ = json_item.insert("body", json_item_body);
         json_item
     }
 
@@ -482,7 +426,7 @@ impl TaggedFieldContent {
     }
 }
 
-pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool) {
+fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool) {
     let mut ret: TaggedFieldFilter = TaggedFieldFilter::default();
     let mut has_error = false;
 
@@ -583,75 +527,115 @@ pub fn build_tagged_field_filter(args: &DumpOptions) -> (TaggedFieldFilter, bool
     (ret, has_error)
 }
 
-pub fn dump_tagged_field_to_text_file(
-    tagged_fields: &Vec<TaggedFieldContent>,
-    output_file: &String,
-) -> Result<(), ()> {
-    let mut has_error = false;
-    match File::create(&output_file) {
-        Ok(mut f) => {
-            let mut text: HashSet<String> = HashSet::new();
-            for tagged_field in tagged_fields {
-                text.extend(tagged_field.to_text());
-            }
+pub struct DumpPluginTaggedField {
+    filter: TaggedFieldFilter,
+    content: VecDeque<Box<TaggedFieldContent>>,
 
-            for line in text {
-                let _ = f.write(line.as_bytes());
-                let _ = f.write(b"\n");
-            }
-        }
-        Err(e) => {
-            error!(
-                "Try to open {} to write string table failed, {}",
-                output_file, e
-            );
-            has_error = true;
-        }
-    }
+    // output
+    ordered_output: bool,
+    write_to_text_file: String,
+    write_to_json_file: String,
+}
 
-    if has_error {
-        Err(())
-    } else {
-        Ok(())
+impl DumpPluginTaggedField {
+    pub fn build(args: &DumpOptions) -> (Option<Box<dyn dump_plugin::DumpPluginInterface>>, bool) {
+        if args.output_tagged_data_json.is_empty() && args.output_tagged_data_text.is_empty() {
+            return (None, false);
+        }
+
+        let (tagged_field_filter, has_tagged_field_error) = build_tagged_field_filter(&args);
+        if has_tagged_field_error {
+            return (None, has_tagged_field_error);
+        }
+
+        (
+            Some(Box::new(DumpPluginTaggedField {
+                filter: tagged_field_filter,
+                content: VecDeque::new(),
+                ordered_output: args.tagged_data_ordered,
+                write_to_text_file: args.output_tagged_data_text.clone(),
+                write_to_json_file: args.output_tagged_data_json.clone(),
+            })),
+            false,
+        )
     }
 }
 
-pub fn dump_tagged_field_to_json_file(
-    tagged_fields: &Vec<TaggedFieldContent>,
-    output_file: &String,
-    pretty: bool,
-) -> Result<(), ()> {
-    let mut has_error = false;
+impl dump_plugin::DumpPluginInterface for DumpPluginTaggedField {
+    fn create_block(
+        &self,
+        data_source: Rc<dump_plugin::DumpPluginBlockDataSource>,
+    ) -> Option<Box<dyn dump_plugin::DumpPluginBlockInterface>> {
+        Some(Box::new(TaggedFieldContent {
+            head: data_source,
+            body: HashMap::new(),
+        }))
+    }
 
-    match File::create(&output_file) {
-        Ok(mut f) => {
-            let mut json = json::JsonValue::new_array();
-            for tagged_field in tagged_fields {
-                let _ = json.push(tagged_field.to_json());
-            }
-
-            if pretty {
-                if let Err(e) = f.write_all(json::stringify_pretty(json, 2).as_bytes()) {
-                    error!("Try to write string table to {} failed, {}", output_file, e);
-                    has_error = true;
-                }
-            } else if let Err(e) = f.write_all(json::stringify(json).as_bytes()) {
-                error!("Try to write string table to {} failed, {}", output_file, e);
-                has_error = true;
-            }
-        }
-        Err(e) => {
+    fn load_message(
+        &mut self,
+        block: &mut Box<dyn dump_plugin::DumpPluginBlockInterface>,
+        message: &dyn MessageDyn,
+        data_source: &dump_plugin::DumpPluginSheetDataSource,
+    ) {
+        if let Some(rb) = block.as_any_mut().downcast_mut::<TaggedFieldContent>() {
+            rb.load_message(message, &mut self.filter, &data_source);
+        } else {
             error!(
-                "Try to open {} to write string table failed, {}",
-                output_file, e
+                "In DumpPluginTaggedField::load_message, the block is not TaggedFieldContent, ignore this message"
             );
-            has_error = true;
+            return;
         }
     }
 
-    if has_error {
-        Err(())
-    } else {
-        Ok(())
+    fn push_block(&mut self, block: Box<dyn dump_plugin::DumpPluginBlockInterface>) {
+        if let Ok(rb) = block.into_any().downcast::<TaggedFieldContent>() {
+            self.content.push_back(rb);
+        } else {
+            error!(
+                "In DumpPluginTaggedField::push_block, the block is not TaggedFieldContent, ignore this message"
+            );
+            return;
+        }
+    }
+
+    fn to_json(&self) -> Vec<json::JsonValue> {
+        let mut ret = Vec::with_capacity(self.content.len());
+        for tagged_field in &self.content {
+            ret.push(tagged_field.to_json(
+                self.header_to_json(tagged_field.head.as_ref()),
+                self.ordered_output,
+            ));
+        }
+        ret
+    }
+
+    fn to_text(&self) -> Vec<String> {
+        let mut text: HashSet<String> = HashSet::new();
+        for tagged_field in &self.content {
+            text.extend(tagged_field.to_text());
+        }
+
+        let mut ret = Vec::with_capacity(text.len());
+        ret.extend(text.iter().cloned());
+        ret.sort();
+        ret
+    }
+
+    fn flush(&self, pretty: bool) -> dump_plugin::DumpPluginFlushResult {
+        let mut ret = Ok(());
+        if !self.write_to_text_file.is_empty() {
+            if let Err(e) = self.dump_to_text_file(&self.write_to_text_file) {
+                ret = Err(e);
+            }
+        }
+
+        if !self.write_to_json_file.is_empty() {
+            if let Err(e) = self.dump_to_json_file(&self.write_to_json_file, pretty) {
+                ret = Err(e);
+            }
+        }
+
+        ret
     }
 }

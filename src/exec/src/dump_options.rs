@@ -86,6 +86,10 @@ pub struct DumpOptions {
     #[arg(long, value_parser, default_value = "false")]
     pub string_table_pretty: bool,
 
+    /// String table ordered mode
+    #[arg(long, value_parser, default_value = "false")]
+    pub string_table_ordered: bool,
+
     /// Output tagged field as json
     #[arg(
         long,
@@ -147,4 +151,8 @@ pub struct DumpOptions {
     /// Tagged data pretty mode
     #[arg(long, value_parser, default_value = "false")]
     pub tagged_data_pretty: bool,
+
+    /// Tagged data ordered mode
+    #[arg(long, value_parser, default_value = "false")]
+    pub tagged_data_ordered: bool,
 }

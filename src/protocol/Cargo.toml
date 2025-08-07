@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-protocol"
-version = "2.5.0"
+version = "2.5.1"
 authors = ["owent <admin@owent.net>"]
 license = "MIT"
 description = "A tool to dump human readable text from binary output of xresloader"
@@ -8,7 +8,7 @@ homepage = "http://xresloader.atframe.work/"
 repository = "https://github.com/xresloader/xresloader-dump-bin"
 documentation = "http://xresloader.atframe.work/"
 keywords = ["xresloader"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,5 +1,5 @@
 use json::codegen::Generator;
-use json::{object::Object, JsonValue};
+use json::{JsonValue, object::Object};
 
 use std::io;
 
@@ -129,9 +129,9 @@ where
     T: Into<JsonValue>,
 {
     let root: JsonValue = root.into();
-    let mut gen = PrettyGenerator::new(0, false);
-    gen.write_json(&root).expect("Can't fail");
-    gen.consume()
+    let mut generator = PrettyGenerator::new(0, false);
+    generator.write_json(&root).expect("Can't fail");
+    generator.consume()
 }
 
 /// Pretty prints out the value as JSON string. Second argument is a
@@ -141,7 +141,7 @@ where
     T: Into<JsonValue>,
 {
     let root: JsonValue = root.into();
-    let mut gen = PrettyGenerator::new(spaces, true);
-    gen.write_json(&root).expect("Can't fail");
-    gen.consume()
+    let mut generator = PrettyGenerator::new(spaces, true);
+    generator.write_json(&root).expect("Can't fail");
+    generator.consume()
 }

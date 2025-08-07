@@ -19,11 +19,13 @@ use crate::clap::Parser;
 
 use std::collections::HashMap;
 use std::io::Read;
+use std::rc::Rc;
 
-use protobuf::{descriptor::FileDescriptorSet, Message, MessageFull};
+use protobuf::{Message, MessageFull, descriptor::FileDescriptorSet};
 // use xresloader_protocol::proto::Xresloader_datablocks;
 
 mod dump_options;
+mod dump_plugin;
 mod file_descriptor_index;
 mod logger;
 mod ordered_generator;
@@ -33,6 +35,38 @@ mod utility;
 
 type DumpOptions = dump_options::DumpOptions;
 use file_descriptor_index::FileDescriptorIndex;
+
+fn build_dump_plugins(
+    args: &DumpOptions,
+) -> (Vec<Box<dyn dump_plugin::DumpPluginInterface>>, bool) {
+    let mut ret = Vec::with_capacity(8);
+    let mut has_error = false;
+
+    let new_plugin_fns = [tagged_field::DumpPluginTaggedField::build];
+    for new_plugin_fn in &new_plugin_fns {
+        let (new_plugin_inst, new_plugin_has_error) = new_plugin_fn(args);
+        if let Some(p) = new_plugin_inst {
+            ret.push(p);
+        }
+        has_error |= new_plugin_has_error;
+    }
+
+    (ret, has_error)
+}
+
+fn build_dump_plugin_blocks(
+    plugins: &Vec<Box<dyn dump_plugin::DumpPluginInterface>>,
+    data_source: &Rc<dump_plugin::DumpPluginBlockDataSource>,
+) -> Vec<Option<Box<dyn dump_plugin::DumpPluginBlockInterface>>> {
+    let mut ret = Vec::with_capacity(plugins.len());
+
+    Vec::resize_with(&mut ret, plugins.len(), || None);
+
+    for i in 0..plugins.len() {
+        ret[i] = plugins[i].create_block(Rc::clone(data_source));
+    }
+    ret
+}
 
 fn main() {
     let args = DumpOptions::parse();
@@ -49,9 +83,7 @@ fn main() {
     let (string_table_filter, has_string_table_error) =
         string_table::build_string_table_filter(&args);
 
-    let mut tagged_fields: Vec<tagged_field::TaggedFieldContent> = vec![];
-    let (mut tagged_field_filter, has_tagged_field_error) =
-        tagged_field::build_tagged_field_filter(&args);
+    let (mut dump_plugins, dump_plugins_has_error) = build_dump_plugins(&args);
 
     for pb_file in args.pb_file {
         debug!("Load pb file: {}", pb_file);
@@ -90,9 +122,9 @@ fn main() {
         }
     }
 
-    let mut has_error = has_string_table_error || has_tagged_field_error;
+    let mut has_error = has_string_table_error || dump_plugins_has_error;
 
-    for bin_file in args.bin_file {
+    for ref bin_file in args.bin_file {
         debug!("Load xresloader output binary file: {}", bin_file);
         match std::fs::OpenOptions::new()
             .read(true)
@@ -148,10 +180,7 @@ fn main() {
                             current_string_table_head = Some(string_table::StringTableBinarySource::new(&data_blocks, bin_file.clone()));
                         }
 
-                        let mut current_tagged_field_head : Option<tagged_field::TaggedFieldBinarySource> = None;
-                        if !args.output_tagged_data_json.is_empty() || !args.output_tagged_data_text.is_empty() {
-                            current_tagged_field_head = Some(tagged_field::TaggedFieldBinarySource::new(&data_blocks, bin_file.clone()));
-                        }
+                        let dump_plugin_block_data_source= dump_plugin::DumpPluginBlockDataSource::new(&data_blocks, bin_file.clone());
 
                         if !args.silence {
                             info!("============ Body: {} -> {} ============", &bin_file, &data_blocks.data_message_type);
@@ -171,15 +200,9 @@ fn main() {
                         let mut fallback_string_table_data_source =
                             string_table::StringTableDataSource::default();
 
-                        let mut current_tagged_field :Option<tagged_field::TaggedFieldContent> = None;
-                        if let Some(head) = current_tagged_field_head {
-                            current_tagged_field = Some(tagged_field::TaggedFieldContent {
-                                head,
-                                body: HashMap::new(),
-                            });
-                        }
-                        let mut fallback_tagged_field_data_source =
-                            tagged_field::TaggedFieldDataSource::default();
+                        let mut current_dump_plugin_blocks = build_dump_plugin_blocks(&dump_plugins, &dump_plugin_block_data_source);
+                        let mut fallback_dump_plugin_sheet_data_source =
+                            dump_plugin::DumpPluginSheetDataSource::default();
 
                         let mut current_data_source_idx = 0;
                         let mut current_data_source_left_row = 0;
@@ -188,7 +211,7 @@ fn main() {
                             if current_data_source_left_row <= 0 && current_data_source_idx < data_blocks.header.data_source.len() {
                                 current_data_source_left_row = data_blocks.header.data_source[current_data_source_idx].count;
                                 fallback_string_table_data_source = string_table::StringTableDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
-                                fallback_tagged_field_data_source = tagged_field::TaggedFieldDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
+                                fallback_dump_plugin_sheet_data_source = dump_plugin::DumpPluginSheetDataSource::new(&data_blocks.header.data_source[current_data_source_idx]);
                                 current_data_source_idx += 1;
                             }
                             if current_data_source_left_row > 0 {
@@ -201,8 +224,14 @@ fn main() {
                                         string_table.load_message(message.as_ref(), &string_table_filter, &fallback_string_table_data_source);
                                     }
 
-                                    if let Some(ref mut tagged_field) = current_tagged_field {
-                                        tagged_field.load_message(message.as_ref(), &mut tagged_field_filter, &fallback_tagged_field_data_source);
+                                    for i in 0 .. dump_plugins.len() {
+                                        if let Some(ref mut block) = current_dump_plugin_blocks[i] {
+                                            dump_plugins[i].load_message(
+                                                block,
+                                                message.as_ref(),
+                                                &fallback_dump_plugin_sheet_data_source,
+                                            );
+                                        }
                                     }
 
                                     if args.head_only || args.silence {
@@ -248,9 +277,11 @@ fn main() {
                             }
                         }
 
-                        if let Some(tagged_field) = current_tagged_field {
-                            if !tagged_field.body.is_empty() {
-                                tagged_fields.push(tagged_field);
+                        for i in 0 .. dump_plugins.len() {
+                            if let Some(block) = current_dump_plugin_blocks[i].take() {
+                                dump_plugins[i].push_block(
+                                    block
+                                );
                             }
                         }
                     }
@@ -268,8 +299,6 @@ fn main() {
                 has_error = true;
             }
         }
-
-        // 2.6.0
     }
 
     // Dump string table json
@@ -294,22 +323,8 @@ fn main() {
     }
 
     // Dump tagged data json
-    if !args.output_tagged_data_json.is_empty() {
-        if let Err(_) = tagged_field::dump_tagged_field_to_json_file(
-            &tagged_fields,
-            &args.output_tagged_data_json,
-            args.pretty || args.tagged_data_pretty,
-        ) {
-            has_error = true;
-        }
-    }
-
-    // Dump tagged data text
-    if !args.output_tagged_data_text.is_empty() {
-        if let Err(_) = tagged_field::dump_tagged_field_to_text_file(
-            &tagged_fields,
-            &args.output_tagged_data_text,
-        ) {
+    for i in 0..dump_plugins.len() {
+        if let Err(_) = dump_plugins[i].flush(args.pretty || args.tagged_data_pretty) {
             has_error = true;
         }
     }
