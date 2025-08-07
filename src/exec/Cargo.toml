@@ -1,6 +1,6 @@
 [package]
 name = "xresloader-dump-bin"
-version = "2.6.1"
+version = "2.6.0"
 authors = ["owent <admin@owent.net>"]
 license = "MIT License"
 description = "A tool to dump human readable text from binary output of xresloader"
