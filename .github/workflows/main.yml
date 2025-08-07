@@ -95,37 +95,12 @@ jobs:
         shell: bash
         run: |
           cargo build --target ${{ matrix.target }} --release --all-features
-      - name: Debug build & test
+      - name: Debug tests
         shell: bash
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
         run: |
           export RUSTFLAGS="-C link-dead-code"
           cargo test --all-features
-      # - name: Cargo Release build
-      #   uses: actions-rs/cargo@v1
-      #   if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
-      #   with:
-      #     use-cross: false
-      #     command: build
-      #     args: --target ${{ matrix.target }} --release --all-features
-      # - name: Cross Release build
-      #   if: ${{ matrix.target != 'x86_64-unknown-linux-gnu' }}
-      #   shell: bash
-      #   run: |
-      #     NEED_RETRY=0
-      #     cargo install cross xargo
-      #     cross build --target ${{ matrix.target }} --release --all-features || NEED_RETRY=1
-      #     if [[ $NEED_RETRY -ne 0 ]]; then
-      #       cargo install cross --git https://github.com/cross-rs/cross
-      #     fi
-      #     cross build --target ${{ matrix.target }} --release --all-features
-      # - name: Debug build & test
-      #   uses: actions-rs/cargo@v1
-      #   if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
-      #   with:
-      #     command: test
-      #     args: --all-features
-      #   env:
-      #     RUSTFLAGS: "-C link-dead-code"
       - name: Cache prebuilt and cargo
         uses: actions/cache@v3
         with:
@@ -182,12 +157,13 @@ jobs:
         run: |
           rustup target add --toolchain ${{ matrix.rust }} ${{ matrix.target }}
           # rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
-      - name: Cargo Release build
-        uses: actions-rs/cargo@v1
+      - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          use-cross: false
-          command: build
-          args: --target ${{ matrix.target }} --release --all-features
+          target: ${{ matrix.target }}
+      - name: Cargo build
+        shell: bash
+        run: |
+          cargo build --target ${{ matrix.target }} --release --all-features
       - name: Package
         shell: bash
         run: |
@@ -203,6 +179,7 @@ jobs:
           cd ../../..;
           mv -f "target/${{ matrix.target }}/release/${{ matrix.target }}.tar.gz" ./;
       - name: Run tests
+        if: ${{ matrix.target == 'aarch64-apple-darwin' }}
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
       - uses: xresloader/upload-to-github-release@v1
@@ -222,7 +199,9 @@ jobs:
       matrix:
         os: [windows-latest]
         rust: [stable]
-        target: [x86_64-pc-windows-msvc]
+        target:
+          - x86_64-pc-windows-msvc
+          - aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -234,20 +213,13 @@ jobs:
         run: |
           rustup target add --toolchain ${{ matrix.rust }} ${{ matrix.target }}
           # rustup component add --toolchain ${{ matrix.rust }} --target ${{ matrix.target }} cargo rustfmt rust-docs
-      - name: Cargo Release build
-        uses: actions-rs/cargo@v1
-        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
+      - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          use-cross: false
-          command: build
-          args: --target ${{ matrix.target }} --release --all-features
-      - name: Cross Release build
-        uses: actions-rs/cargo@v1
-        if: ${{ matrix.target == 'x86_64-pc-windows-gnu' }}
-        with:
-          use-cross: false
-          command: build
-          args: --target ${{ matrix.target }} --release --all-features
+          target: ${{ matrix.target }}
+      - name: Cargo build
+        shell: bash
+        run: |
+          cargo build --target ${{ matrix.target }} --release --all-features
       - name: Package
         shell: pwsh
         run: |
@@ -261,6 +233,7 @@ jobs:
           Copy-Item -Force "${{ matrix.target }}.zip" ../../../
           cd ../../../
       - name: Run tests
+        if: ${{ matrix.target == 'x86_64-pc-windows-msvc' }}
         shell: pwsh
         run: |
           cargo test --release --verbose --target ${{ matrix.target }}
