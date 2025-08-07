@@ -47,5 +47,7 @@ pub mod xresloader_ue;
     println!(
         "cargo:rerun-if-changed=../../third_party/xresloader-protocol/core/extensions/v3/xresloader.proto"
     );
-    println!("cargo:rerun-if-changed=../../third_party/xresloader-protocol/core/extensions/v3/xresloader_ue.proto");
+    println!(
+        "cargo:rerun-if-changed=../../third_party/xresloader-protocol/core/extensions/v3/xresloader_ue.proto"
+    );
 }
